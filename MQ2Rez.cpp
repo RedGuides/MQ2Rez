@@ -18,6 +18,7 @@
 #define    PLUGIN_FLAG      0xF9FF                // Plugin Auto-Pause Flags (see InStat)
 
 //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=//
+// v3.1 - Eqmule 08-22-2017 - Added a delay to pulse for checking the dialog, it has improved performance.
 
 #ifndef PLUGIN_API
 	#include "../MQ2Plugin.h"
@@ -323,73 +324,78 @@ PLUGIN_API VOID ShutdownPlugin() {
 }
 
 //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=//
-
+int PulseDelay = 0;
 PLUGIN_API VOID OnPulse() {
     
-    if (RezClicked && ClickWait>35)  {
-       //DoCommand(GetCharInfo()->pSpawn,"/squelch /notify RespawnWnd RW_OptionsList listselect 2");
-        SelectResurrect();
-        if(ClickWait>75) return;
-        DoCommand(GetCharInfo()->pSpawn,"/squelch /notify RespawnWnd RW_SelectButton leftmouseup");
-        ClickWait=0;
-        RezClicked=false;
-        RezDone = true;
-        return;
-			}
-    else if(RezClicked) {
-        ClickWait++;
-        return;
-		}
+	if (RezClicked && ClickWait > 35) {
+		//DoCommand(GetCharInfo()->pSpawn,"/squelch /notify RespawnWnd RW_OptionsList listselect 2");
+		SelectResurrect();
+		if (ClickWait > 75) return;
+		DoCommand(GetCharInfo()->pSpawn, "/squelch /notify RespawnWnd RW_SelectButton leftmouseup");
+		ClickWait = 0;
+		RezClicked = false;
+		RezDone = true;
+		return;
+	}
+	else if (RezClicked) {
+		ClickWait++;
+		return;
+	}
     static int RespawnWndCnt = 0;
     static int RezBoxCnt = 0;
-
-    if (IsWindowOpen("RespawnWnd")) {
-        RespawnWndCnt++;
-        if (!bStartTimer) {
-            bStartTimer = true;
-            StartTime = time(NULL);
-            RespawnStartTime = time(NULL);
-        }
-        if (bSoundAlarm && (time(NULL) > StartTime + 15)) {
-            PlaySound(RezAlertSound,0,SND_ASYNC);
-            StartTime = time(NULL);
-							}
-						}
-						else {
-        RespawnWndCnt=0;
-        bStartTimer = false;
-					}
-    if (AutoRezAccept && (ExpRezBox()>=AutoRezPct) ) {
-        RezBoxCnt++;
-        PulseCount++;
-        showMessage = false;
-    } else {
-        RezBoxCnt = 0;
-        PulseCount = 0;
-        showMessage = true;
-    }
-    if (AutoRezSpawn && RespawnWndCnt) {
-        if ((time(NULL) > RespawnStartTime + AutoRezSpawnDelay)) {
-            WinClick(FindMQ2Window("RespawnWnd"),"RW_SelectButton","leftmouseup",1);
-        return;
-				}
+	if (PulseDelay < 100) {//we just HAVE to slow down this check cause calling IsWindowOpen is choking the macro engine
+		PulseDelay++;
+	}
+	else {
+		PulseDelay = 0;
+		if (IsWindowOpen("RespawnWnd")) {
+			RespawnWndCnt++;
+			if (!bStartTimer) {
+				bStartTimer = true;
+				StartTime = time(NULL);
+				RespawnStartTime = time(NULL);
 			}
-    if (AutoRezAccept && RezBoxCnt > 0 && PulseCount > AutoRezTimer) {
-        
-        WriteChatColor("Accepting Rez now");
-        DoCommand(GetCharInfo()->pSpawn,"/notify ConfirmationDialogBox CD_Yes_Button leftmouseup");
-        RezClicked = true;
-        doCommand = true;
-        seconds = time (NULL);
+			if (bSoundAlarm && (time(NULL) > StartTime + 15)) {
+				PlaySound(RezAlertSound, 0, SND_ASYNC);
+				StartTime = time(NULL);
+			}
+		}
+		else {
+			RespawnWndCnt = 0;
+			bStartTimer = false;
+		}
+		if (AutoRezAccept && (ExpRezBox() >= AutoRezPct)) {
+			RezBoxCnt++;
+			PulseCount++;
+			showMessage = false;
+		}
+		else {
+			RezBoxCnt = 0;
+			PulseCount = 0;
+			showMessage = true;
+		}
+		if (AutoRezSpawn && RespawnWndCnt) {
+			if ((time(NULL) > RespawnStartTime + AutoRezSpawnDelay)) {
+				WinClick(FindMQ2Window("RespawnWnd"), "RW_SelectButton", "leftmouseup", 1);
+				return;
+			}
+		}
+		if (AutoRezAccept && RezBoxCnt > 0 && PulseCount > AutoRezTimer) {
+
+			WriteChatColor("Accepting Rez now");
+			DoCommand(GetCharInfo()->pSpawn, "/notify ConfirmationDialogBox CD_Yes_Button leftmouseup");
+			RezClicked = true;
+			doCommand = true;
+			seconds = time(NULL);
 		}
 
-    if ( !AreWeZoning && doCommand && RezCommandOn && time(NULL) > seconds + 4) {
-        doCommand = false;
-        WriteChatf("Rez accepted. Executing %s",szCommand);
-        sprintf_s(szTemp,"/docommand %s", szCommand);
-        DoCommand(GetCharInfo()->pSpawn,szTemp);
+		if (!AreWeZoning && doCommand && RezCommandOn && time(NULL) > seconds + 4) {
+			doCommand = false;
+			WriteChatf("Rez accepted. Executing %s", szCommand);
+			sprintf_s(szTemp, "/docommand %s", szCommand);
+			DoCommand(GetCharInfo()->pSpawn, szTemp);
+		}
 	}
-
 }
 
 PLUGIN_API VOID OnBeginZone(VOID) 

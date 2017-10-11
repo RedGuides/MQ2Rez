@@ -104,7 +104,7 @@ void AutoRezCommand(PSPAWNINFO pCHAR, PCHAR zLine) {
 
 
 VOID Rezzy(PSPAWNINFO pChar, PCHAR szLine) {
-	if(CSidlScreenWnd *pWnd=(CSidlScreenWnd*)FindMQ2Window("RespawnWnd")) {
+	if(CSidlScreenWnd *pWnd=(CSidlScreenWnd *)pRespawnWnd) {
 		pWnd->BGColor = 0xFF000000;
 		if (pWnd->dShow==1) {
 			if (CListWnd*clist = (CListWnd*)pWnd->GetChildItem("OptionsList")) {
@@ -203,9 +203,6 @@ PLUGIN_API VOID OnPulse()
 					if (bVoiceNotify && !bNotified) {
 						if (pCharInfo->pSpawn->RespawnTimer || pCharInfo->pSpawn->StandState == STANDSTATE_DEAD) {
 							bNotified = 1;
-							if (pCharInfo->pGroupInfo) {
-								DoCommand(pCharInfo->pSpawn, "/squelch /vg 7");
-							}
 						}
 						else {
 							bNotified = 0;

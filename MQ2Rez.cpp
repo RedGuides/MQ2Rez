@@ -5,13 +5,14 @@
 //=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=//
 // v3.0 - Eqmule 07-22-2016 - Added string safety.
 // v3.1 - Eqmule 08-22-2017 - Added a delay to pulse for checking the dialog, it has improved performance.
+// v3.2 - s0rCieR 01-28-2019 - Added missing command to be executed when you got rezzed! removed rezz sickness check
 
 #define    PLUGIN_NAME    "MQ2Rez"
 
 #ifndef PLUGIN_API
 	#include "../MQ2Plugin.h"
 	PreSetup(PLUGIN_NAME);
-	PLUGIN_VERSION(3.1);
+	PLUGIN_VERSION(3.2);
 #endif PLUGIN_API
 
 int corpsecount = 0;
@@ -192,9 +193,11 @@ PLUGIN_API VOID OnPulse()
 		}
 		if (PCHARINFO pCharInfo = GetCharInfo()) {
 			if(bDoCommand && bCommandPending) {
-				if (IsRezSick() && pCharInfo->pSpawn->StandState!=STANDSTATE_DEAD) {
+//				if (IsRezSick() && pCharInfo->pSpawn->StandState!=STANDSTATE_DEAD) {
+				if (pCharInfo->pSpawn->StandState!=STANDSTATE_DEAD) {
 					bCommandPending = 0;
 					WriteChatf("Executing Command: \ag%s\ax",RezCommand);
+					EzCommand(RezCommand);
 				}
 			}
 			if (PCHARINFO2 pCharInfo2 = GetCharInfo2()) {

@@ -192,7 +192,7 @@ PLUGIN_API VOID OnPulse()
 			}
 		}
 		if (PCHARINFO pCharInfo = GetCharInfo()) {
-			if(bDoCommand && (unsigned long)clock() > bCommandPending) {
+			if(bDoCommand && bCommandPending && (unsigned long)clock() > bCommandPending) {
 //				if (IsRezSick() && pCharInfo->pSpawn->StandState!=STANDSTATE_DEAD) {
 				if (pCharInfo->pSpawn->StandState!=STANDSTATE_DEAD && gbInZone) {
 					bCommandPending = 0;

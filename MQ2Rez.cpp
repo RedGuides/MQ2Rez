@@ -194,7 +194,7 @@ PLUGIN_API VOID OnPulse()
 		if (PCHARINFO pCharInfo = GetCharInfo()) {
 			if(bDoCommand && bCommandPending) {
 //				if (IsRezSick() && pCharInfo->pSpawn->StandState!=STANDSTATE_DEAD) {
-				if (pCharInfo->pSpawn->StandState!=STANDSTATE_DEAD) {
+				if (pCharInfo->pSpawn->StandState!=STANDSTATE_DEAD && gbInZone) {
 					bCommandPending = 0;
 					WriteChatf("Executing Command: \ag%s\ax",RezCommand);
 					EzCommand(RezCommand);

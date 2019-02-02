@@ -21,7 +21,7 @@ BOOL bRezThreadStarted = 0;
 BOOL bVoiceNotify = 1;
 BOOL bNotified = 0;
 BOOL bDoCommand = 0;
-BOOL bCommandPending = 0;
+unsigned long bCommandPending = 0; // making it a timer so we could delay command
 BOOL AutoRezAccept = 0;
 DWORD AutoRezPct = 96;
 BOOL AutoRezSafeMode = 0;
@@ -155,7 +155,7 @@ DWORD __stdcall AcceptRez(PVOID pData)
 		Rezzy(NULL,NULL);
 	}
 	if(bDoCommand) {
-		bCommandPending = 1;
+		bCommandPending = (unsigned long)clock() + 1000; // evaluating timer 
 	}
 	bRezThreadStarted = 0;
 	return 1;
@@ -192,7 +192,7 @@ PLUGIN_API VOID OnPulse()
 			}
 		}
 		if (PCHARINFO pCharInfo = GetCharInfo()) {
-			if(bDoCommand && bCommandPending) {
+			if(bDoCommand && (unsigned long)clock() > bCommandPending) {
 //				if (IsRezSick() && pCharInfo->pSpawn->StandState!=STANDSTATE_DEAD) {
 				if (pCharInfo->pSpawn->StandState!=STANDSTATE_DEAD && gbInZone) {
 					bCommandPending = 0;

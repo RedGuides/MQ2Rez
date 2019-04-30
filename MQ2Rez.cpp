@@ -106,8 +106,8 @@ void AutoRezCommand(PSPAWNINFO pCHAR, PCHAR zLine) {
 
 VOID Rezzy(PSPAWNINFO pChar, PCHAR szLine) {
 	if(CSidlScreenWnd *pWnd=(CSidlScreenWnd *)pRespawnWnd) {
-		pWnd->BGColor = 0xFF000000;
-		if (pWnd->dShow==1) {
+		pWnd->SetBGColor(0xFF000000);
+		if (pWnd->IsVisible()) {
 			if (CListWnd*clist = (CListWnd*)pWnd->GetChildItem("OptionsList")) {
 				if (CButtonWnd*cButton = (CButtonWnd*)pWnd->GetChildItem("SelectButton")) {
 					CXStr Str;
@@ -120,7 +120,7 @@ VOID Rezzy(PSPAWNINFO pChar, PCHAR szLine) {
 							break;
 						}
 					}
-					if (cButton->Enabled) {
+					if (cButton->IsEnabled()) {
 						SendWndClick2(cButton, "leftmouseup");
 					}
 					//DoCommand(GetCharInfo()->pSpawn, "/squelch /notify RespawnWnd RW_OptionsList listselect 2");
@@ -147,10 +147,10 @@ DWORD __stdcall AcceptRez(PVOID pData)
 	PCSIDLWND pWnd=(PCSIDLWND)pData;
 	WriteChatColor("Accepting Rez now");
 	DoCommand(GetCharInfo()->pSpawn,"/notify ConfirmationDialogBox Yes_Button leftmouseup");
-	while(pWnd && pWnd->dShow==1 && start+30000 > GetTickCount64()) {
+	while(pWnd && pWnd->IsVisible()==1 && start+30000 > GetTickCount64()) {
 		Sleep(0);
 	}
-	if(pWnd && pWnd->dShow==0) {
+	if(pWnd && pWnd->IsVisible()==0) {
 		WriteChatColor("Selecting Respawn now");
 		Rezzy(NULL,NULL);
 	}
@@ -219,7 +219,7 @@ PLUGIN_API VOID OnPulse()
 			else {
 				PulseDelay = 0;
 				if (CSidlScreenWnd *pWnd = (CSidlScreenWnd *)FindMQ2Window("ConfirmationDialogBox")) {
-					if (pWnd->dShow == 1) {
+					if (pWnd->IsVisible()) {
 						if (CStmlWnd *Child = (CStmlWnd*)pWnd->GetChildItem("cd_textoutput")) {
 							CHAR InputCXStr[MAX_STRING] = { 0 };
 							GetCXStr(Child->STMLText, InputCXStr, MAX_STRING);
@@ -249,7 +249,7 @@ PLUGIN_API VOID OnPulse()
 										else if (IsGuildMember(InputCXStr)) {
 											bOktoRez = TRUE;
 										}
-										else if (IsRaidMember(InputCXStr)) {
+										else if (IsRaidMember(InputCXStr)!=-1) {
 											bOktoRez = TRUE;
 										}
 									}

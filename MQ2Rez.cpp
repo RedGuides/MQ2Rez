@@ -104,7 +104,7 @@ void AutoRezCommand(PSPAWNINFO pCHAR, PCHAR zLine) {
 }
 
 
-VOID Rezzy(PSPAWNINFO pChar, PCHAR szLine) {
+bool Rezzy(PSPAWNINFO pChar, PCHAR szLine) {
 	if(CSidlScreenWnd *pWnd=(CSidlScreenWnd *)pRespawnWnd) {
 		pWnd->SetBGColor(0xFF000000);
 		if (pWnd->IsVisible()) {
@@ -122,6 +122,7 @@ VOID Rezzy(PSPAWNINFO pChar, PCHAR szLine) {
 					}
 					if (cButton->IsEnabled()) {
 						SendWndClick2(cButton, "leftmouseup");
+						return true;
 					}
 					//DoCommand(GetCharInfo()->pSpawn, "/squelch /notify RespawnWnd RW_OptionsList listselect 2");
 					//DoCommand(GetCharInfo()->pSpawn, "/squelch /notify RespawnWnd RW_SelectButton leftmouseup");
@@ -129,6 +130,7 @@ VOID Rezzy(PSPAWNINFO pChar, PCHAR szLine) {
 			}
 		}
 	}
+	return false;
 }
 
 PLUGIN_API VOID InitializePlugin()
@@ -218,6 +220,27 @@ PLUGIN_API VOID OnPulse()
 			}
 			else {
 				PulseDelay = 0;
+				if (bRezThreadStarted)
+				{
+					if (CSidlScreenWnd *pWnd = (CSidlScreenWnd *)FindMQ2Window("ConfirmationDialogBox")) {
+						if (pWnd->IsVisible()==0) {
+							WriteChatColor("Selecting Respawn now");
+							if (Rezzy(NULL, NULL))
+							{
+								bRezThreadStarted = 0;
+							}
+						}
+					}
+					else {
+						if (Rezzy(NULL, NULL))
+						{
+							bRezThreadStarted = 0;
+						}
+					}
+					if(bDoCommand) {
+						bCommandPending = (unsigned long)clock() + 1000; // evaluating timer
+					}
+				}
 				if (CSidlScreenWnd *pWnd = (CSidlScreenWnd *)FindMQ2Window("ConfirmationDialogBox")) {
 					if (pWnd->IsVisible()) {
 						if (CStmlWnd *Child = (CStmlWnd*)pWnd->GetChildItem("cd_textoutput")) {
@@ -258,8 +281,10 @@ PLUGIN_API VOID OnPulse()
 							if (bOktoRez && pct >= AutoRezPct && bRezThreadStarted == 0) {
 								bRezThreadStarted = 1;
 								//its ok to take the rez.
-								DWORD nThreadID = 0;
-								CreateThread(NULL, 0, AcceptRez, pWnd, 0, &nThreadID);
+								//DWORD nThreadID = 0;
+								//CreateThread(NULL, 0, AcceptRez, pWnd, 0, &nThreadID);
+								WriteChatColor("Accepting Rez now");
+								DoCommand(GetCharInfo()->pSpawn,"/notify ConfirmationDialogBox Yes_Button leftmouseup");
 							}
 						}
 					}

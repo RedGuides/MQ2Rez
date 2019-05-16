@@ -122,6 +122,7 @@ bool Rezzy(PSPAWNINFO pChar, PCHAR szLine) {
 					}
 					if (cButton->IsEnabled()) {
 						SendWndClick2(cButton, "leftmouseup");
+						bRezThreadStarted = 0;
 						return true;
 					}
 					//DoCommand(GetCharInfo()->pSpawn, "/squelch /notify RespawnWnd RW_OptionsList listselect 2");
@@ -225,17 +226,11 @@ PLUGIN_API VOID OnPulse()
 					if (CSidlScreenWnd *pWnd = (CSidlScreenWnd *)FindMQ2Window("ConfirmationDialogBox")) {
 						if (pWnd->IsVisible()==0) {
 							WriteChatColor("Selecting Respawn now");
-							if (Rezzy(NULL, NULL))
-							{
-								bRezThreadStarted = 0;
-							}
+							Rezzy(NULL, NULL);
 						}
 					}
 					else {
-						if (Rezzy(NULL, NULL))
-						{
-							bRezThreadStarted = 0;
-						}
+						Rezzy(NULL, NULL);
 					}
 					if(bDoCommand) {
 						bCommandPending = (unsigned long)clock() + 1000; // evaluating timer

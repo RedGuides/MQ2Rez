@@ -6,13 +6,14 @@
 // v3.0 - Eqmule 07-22-2016 - Added string safety.
 // v3.1 - Eqmule 08-22-2017 - Added a delay to pulse for checking the dialog, it has improved performance.
 // v3.2 - s0rCieR 01-28-2019 - Added missing command to be executed when you got rezzed! removed rezz sickness check
-
+// v3.3 - EqMule May 16 2019 -Added /rez delay
+//
 #define    PLUGIN_NAME    "MQ2Rez"
 
 #ifndef PLUGIN_API
 	#include "../MQ2Plugin.h"
 	PreSetup(PLUGIN_NAME);
-	PLUGIN_VERSION(3.2);
+	PLUGIN_VERSION(3.3);
 #endif PLUGIN_API
 
 int corpsecount = 0;
@@ -26,6 +27,8 @@ BOOL AutoRezAccept = 0;
 DWORD AutoRezPct = 96;
 BOOL AutoRezSafeMode = 0;
 CHAR RezCommand[MAX_STRING] = {0};
+ULONGLONG RezDelay = 100;
+ULONGLONG RezDelayTimer = 0;
 
 void DisplayHelp()
 {
@@ -33,6 +36,7 @@ void DisplayHelp()
 	WriteChatColor("/rez -> displays settings");
 	WriteChatColor("/rez accept on|off -> Toggle auto-accepting rezbox");
 	WriteChatColor("/rez pct # -> Autoaccepts rezes only if they are higher than # percent");
+	WriteChatColor("/rez delay #### -> sets time in milliseconds to wait before accepting rez.");
 	WriteChatColor("/rez setcommand mycommand -> Set the command that you want to run after you are rezzed.");
 	WriteChatColor("/rez voice on/off -> Turns on voice macro \"Help\" when in group");
 	WriteChatColor("/rez help");
@@ -73,6 +77,11 @@ void AutoRezCommand(PSPAWNINFO pCHAR, PCHAR zLine) {
 		AutoRezPct=atoi(Parm2);
 		return;
 	}
+	if(!_stricmp("delay",Parm1)) {
+		WritePrivateProfileString("MQ2Rez","RezDelay",Parm2,INIFileName);
+		RezDelay=atoi(Parm2);
+		return;
+	}
 	if(!_stricmp("safemode",Parm1)) {
 		WritePrivateProfileString("MQ2Rez","SafeMode",Parm2,INIFileName);
 		AutoRezSafeMode=atoi(Parm2);
@@ -92,9 +101,11 @@ void AutoRezCommand(PSPAWNINFO pCHAR, PCHAR zLine) {
 		return;
 	}
 	
-	WriteChatf("MQ2Rez Accept(\ag%s\ax).",(AutoRezAccept?"on":"off"));
-	WriteChatf("MQ2Rez AcceptPct(\ag%d\ax).",AutoRezPct);
-	WriteChatf("MQ2Rez SafeMode(\ag%s\ax).",(AutoRezSafeMode?"on":"off"));
+	WriteChatf("MQ2Rez Accept(\ag%s\ax).", (AutoRezAccept ? "on" : "off"));
+	WriteChatf("MQ2Rez RezDelay(\ag%dms\ax).", RezDelay);
+	WriteChatf("MQ2Rez VoiceNotify(\ag%s\ax).", (bVoiceNotify ? "on" : "off"));
+	WriteChatf("MQ2Rez AcceptPct(\ag%d%%\ax).", AutoRezPct);
+	WriteChatf("MQ2Rez SafeMode(\ag%s\ax).", (AutoRezSafeMode ? "on" : "off"));
 	
 	if(RezCommand[0]=='\0' || !_stricmp(RezCommand,"DISABLED")) {
 		WriteChatf("Rez Command to run after rez: \agNot Set\ax.");
@@ -106,6 +117,7 @@ void AutoRezCommand(PSPAWNINFO pCHAR, PCHAR zLine) {
 
 bool Rezzy(PSPAWNINFO pChar, PCHAR szLine) {
 	if(CSidlScreenWnd *pWnd=(CSidlScreenWnd *)pRespawnWnd) {
+		bRezThreadStarted = 0;
 		pWnd->SetBGColor(0xFF000000);
 		if (pWnd->IsVisible()) {
 			if (CListWnd*clist = (CListWnd*)pWnd->GetChildItem("OptionsList")) {
@@ -114,7 +126,7 @@ bool Rezzy(PSPAWNINFO pChar, PCHAR szLine) {
 					CHAR szOut[MAX_STRING] = { 0 };
 					for (int index = 0; index < clist->ItemsArray.Count; index++) {
 						clist->GetItemText(&Str, index, 1);
-						GetCXStr(Str.Ptr, szOut, MAX_STRING);
+						GetCXStr(Str.Ptr, szOut);
 						if (_strnicmp(szOut, "Resurrect", 9) == 0) {
 							clist->SetCurSel(index);
 							break;
@@ -122,11 +134,8 @@ bool Rezzy(PSPAWNINFO pChar, PCHAR szLine) {
 					}
 					if (cButton->IsEnabled()) {
 						SendWndClick2(cButton, "leftmouseup");
-						bRezThreadStarted = 0;
 						return true;
 					}
-					//DoCommand(GetCharInfo()->pSpawn, "/squelch /notify RespawnWnd RW_OptionsList listselect 2");
-					//DoCommand(GetCharInfo()->pSpawn, "/squelch /notify RespawnWnd RW_SelectButton leftmouseup");
 				}
 			}
 		}
@@ -142,26 +151,6 @@ PLUGIN_API VOID InitializePlugin()
 PLUGIN_API VOID ShutdownPlugin()
 {
 	RemoveCommand("/rez");
-}
-
-DWORD __stdcall AcceptRez(PVOID pData)
-{
-	ULONGLONG start = GetTickCount64();
-	PCSIDLWND pWnd=(PCSIDLWND)pData;
-	WriteChatColor("Accepting Rez now");
-	DoCommand(GetCharInfo()->pSpawn,"/notify ConfirmationDialogBox Yes_Button leftmouseup");
-	while(pWnd && pWnd->IsVisible()==1 && start+30000 > GetTickCount64()) {
-		Sleep(0);
-	}
-	if(pWnd && pWnd->IsVisible()==0) {
-		WriteChatColor("Selecting Respawn now");
-		Rezzy(NULL,NULL);
-	}
-	if(bDoCommand) {
-		bCommandPending = (unsigned long)clock() + 1000; // evaluating timer 
-	}
-	bRezThreadStarted = 0;
-	return 1;
 }
 
 BOOL IsRezSick()
@@ -180,17 +169,50 @@ int PulseDelay = 0;
 PLUGIN_API VOID OnPulse()
 {
 	if(GetGameState()==GAMESTATE_INGAME) {
-		if(!Initialized) {
-			Initialized=true;
-			sprintf_s(INIFileName,"%s\\%s_%s.ini",gszINIPath,EQADDR_SERVERNAME,GetCharInfo()->Name);
-			AutoRezAccept = GetPrivateProfileInt("MQ2Rez","Accept" ,0,INIFileName);
-			AutoRezPct = GetPrivateProfileInt("MQ2Rez","RezPct" ,96,INIFileName);
-			AutoRezSafeMode = GetPrivateProfileInt("MQ2Rez","SafeMode" ,0,INIFileName);
-			bVoiceNotify = GetPrivateProfileInt("MQ2Rez","VoiceNotify" ,1,INIFileName);
+		if (!Initialized) {
+			Initialized = true;
+			sprintf_s(INIFileName, "%s\\%s_%s.ini", gszINIPath, EQADDR_SERVERNAME, GetCharInfo()->Name);
+			AutoRezAccept = GetPrivateProfileInt("MQ2Rez", "Accept", -1, INIFileName);
+			if (AutoRezAccept == -1)
+			{
+				WritePrivateProfileString("MQ2Rez", "Accept", "0", INIFileName);
+				AutoRezAccept = 0;
+			}
+			AutoRezPct = GetPrivateProfileInt("MQ2Rez", "RezPct", -1, INIFileName);
+			if (AutoRezPct == -1)
+			{
+				WritePrivateProfileString("MQ2Rez", "RezPct", "96", INIFileName);
+				AutoRezPct = 96;
+			}
+			RezDelay = GetPrivateProfileInt("MQ2Rez", "RezDelay", -1, INIFileName);
+			if (RezDelay == -1)
+			{
+				WritePrivateProfileString("MQ2Rez", "RezDelay", "100", INIFileName);
+				RezDelay = 100;
+			}
+			AutoRezSafeMode = GetPrivateProfileInt("MQ2Rez", "SafeMode", -1, INIFileName);
+			if (AutoRezSafeMode == -1)
+			{
+				WritePrivateProfileString("MQ2Rez", "SafeMode", "0", INIFileName);
+				AutoRezSafeMode = 0;
+			}
+			bVoiceNotify = GetPrivateProfileInt("MQ2Rez","VoiceNotify" ,-1,INIFileName);
+			if (bVoiceNotify == -1)
+			{
+				WritePrivateProfileString("MQ2Rez", "VoiceNotify", "1", INIFileName);
+				bVoiceNotify = 1;
+			}
 			GetPrivateProfileString("MQ2Rez","Command Line",0,RezCommand,MAX_STRING,INIFileName);
-			if(RezCommand[0]=='\0' || !_stricmp(RezCommand,"DISABLED")) {
+			if (RezCommand[0]=='\0')
+			{
+				WritePrivateProfileString("MQ2Rez", "Command Line", "DISABLED", INIFileName);
+			}
+			if(RezCommand[0]=='\0' || !_stricmp(RezCommand,"DISABLED"))
+			{
 				bDoCommand = 0;
-			} else {
+			} 
+			else
+			{
 				bDoCommand = 1;
 			}
 		}
@@ -221,21 +243,6 @@ PLUGIN_API VOID OnPulse()
 			}
 			else {
 				PulseDelay = 0;
-				if (bRezThreadStarted)
-				{
-					if (CSidlScreenWnd *pWnd = (CSidlScreenWnd *)FindMQ2Window("ConfirmationDialogBox")) {
-						if (pWnd->IsVisible()==0) {
-							WriteChatColor("Selecting Respawn now");
-							Rezzy(NULL, NULL);
-						}
-					}
-					else {
-						Rezzy(NULL, NULL);
-					}
-					if(bDoCommand) {
-						bCommandPending = (unsigned long)clock() + 1000; // evaluating timer
-					}
-				}
 				if (CSidlScreenWnd *pWnd = (CSidlScreenWnd *)FindMQ2Window("ConfirmationDialogBox")) {
 					if (pWnd->IsVisible()) {
 						if (CStmlWnd *Child = (CStmlWnd*)pWnd->GetChildItem("cd_textoutput")) {
@@ -280,6 +287,24 @@ PLUGIN_API VOID OnPulse()
 								//CreateThread(NULL, 0, AcceptRez, pWnd, 0, &nThreadID);
 								WriteChatColor("Accepting Rez now");
 								DoCommand(GetCharInfo()->pSpawn,"/notify ConfirmationDialogBox Yes_Button leftmouseup");
+								RezDelayTimer = MQGetTickCount64() + RezDelay;
+								return;
+							}
+						}
+					}
+				}
+				if (bRezThreadStarted)
+				{
+					if (RezDelayTimer < MQGetTickCount64())
+					{
+						RezDelayTimer = 0;
+						if (CSidlScreenWnd *pWnd = (CSidlScreenWnd *)FindMQ2Window("ConfirmationDialogBox")) {
+							if (pWnd->IsVisible() == 0) {
+								WriteChatColor("Selecting Respawn now");
+								Rezzy(NULL, NULL);
+								if (bDoCommand) {
+									bCommandPending = (unsigned long)clock() + 1000; // evaluating timer
+								}
 							}
 						}
 					}

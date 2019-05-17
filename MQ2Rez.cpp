@@ -27,7 +27,7 @@ BOOL AutoRezAccept = 0;
 DWORD AutoRezPct = 96;
 BOOL AutoRezSafeMode = 0;
 CHAR RezCommand[MAX_STRING] = {0};
-ULONGLONG RezDelay = 100;
+int RezDelay = 100;
 ULONGLONG RezDelayTimer = 0;
 
 void DisplayHelp()

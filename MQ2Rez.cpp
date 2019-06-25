@@ -278,6 +278,7 @@ void TheRezCommand(PSPAWNINFO pCHAR, PCHAR szLine)
 	if (!_stricmp("status", Arg) || !_stricmp("settings", Arg)) {
 		GetArg(Arg, szLine, 2);
 		ShowSettings();
+		return;
 	}
 
 	WriteChatf("%s\arInvalid /rez command was used. \ayShowing help!", PLUGINMSG);

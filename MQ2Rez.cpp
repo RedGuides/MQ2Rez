@@ -13,7 +13,7 @@
 
 #define PLUGINMSG "\aw[\agMQ2Rez\aw]\ao:: "
 #define PLUGIN_NAME "MQ2Rez"
-#include "../MQ2Plugin.h"
+#include "../../MQ2Plugin.h"
 PreSetup(PLUGIN_NAME);
 float VERSION = 3.4f;
 PLUGIN_VERSION(VERSION);
@@ -111,32 +111,33 @@ bool ShouldTakeRez() {
 	if (CSidlScreenWnd *pWnd = (CSidlScreenWnd *)FindMQ2Window("ConfirmationDialogBox")) {
 		if (pWnd->IsVisible()) {
 			if (CStmlWnd *Child = (CStmlWnd*)pWnd->GetChildItem("cd_textoutput")) {
-				CHAR InputCXStr[MAX_STRING] = { 0 };
-				GetCXStr(Child->STMLText, InputCXStr, MAX_STRING);
+				std::string confirmationText{ Child->STMLText };
 				BOOL bReturn = FALSE;
 				int pct = 0;
 				BOOL bOktoRez = FALSE;
-				if (strstr(InputCXStr, " return you to your corpse")) {
+				if (confirmationText.find(" return you to your corpse") != std::string::npos) {
 					pct = 100;
 					bReturn = TRUE;
 				}
-				if (strstr(InputCXStr, " percent)") || bReturn) {
-					if (PCHAR pTemp = strstr(InputCXStr, "(")) {
-						pct = atoi(&pTemp[1]);
+				if (confirmationText.find(" percent)") != std::string::npos || bReturn) {
+					auto iBracket = confirmationText.find("(");
+					if (iBracket != std::string::npos) {
+						pct = std::stoi(confirmationText.substr(iBracket + 1));
 					}
 					if (SafeMode) {
-						if (char*pDest = strchr(InputCXStr, ' ')) {
-							pDest[0] = '\0';
-							if (IsGroupMember(InputCXStr)) {
+						auto iSpace = confirmationText.find(' ');
+						if (iSpace != std::string::npos) {
+							auto name = confirmationText.substr(0, iSpace);
+							if (IsGroupMember(name.c_str())) {
 								bOktoRez = TRUE;
 							}
-							else if (IsFellowshipMember(InputCXStr)) {
+							else if (IsFellowshipMember(name.c_str())) {
 								bOktoRez = TRUE;
 							}
-							else if (IsGuildMember(InputCXStr)) {
+							else if (IsGuildMember(name.c_str())) {
 								bOktoRez = TRUE;
 							}
-							else if (IsRaidMember(InputCXStr) != -1) {
+							else if (IsRaidMember(name.c_str()) != -1) {
 								bOktoRez = TRUE;
 							}
 						}
@@ -148,7 +149,7 @@ bool ShouldTakeRez() {
 				if (bOktoRez && pct >= AutoRezPct) {
 					if (!bReturn) {
 						char RezCaster[MAX_STRING] = "";
-						GetArg(RezCaster, InputCXStr, 1);
+						GetArg(RezCaster, confirmationText.c_str(), 1);
 						if (strlen(RezCaster)) {
 							if (gAnonymize) {
 								int len = strlen(RezCaster);
@@ -315,9 +316,7 @@ bool CanRespawn()
 					CXStr Str;
 					CHAR szOut[MAX_STRING] = { 0 };
 					for (int index = 0; index < clist->ItemsArray.Count; index++) {
-						clist->GetItemText(&Str, index, 1);
-						GetCXStr(Str.Ptr, szOut, MAX_STRING);
-						if (!_strnicmp(szOut, "Resurrect", 9)) {
+						if (!clist->GetItemText(index, 1).CompareN("Resurrect", 9)) {
 							if (clist->GetCurSel() != index)
 								clist->SetCurSel(index);
 							break;

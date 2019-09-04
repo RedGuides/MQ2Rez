@@ -137,7 +137,7 @@ bool ShouldTakeRez() {
 							else if (IsGuildMember(name.c_str())) {
 								bOktoRez = TRUE;
 							}
-							else if (IsRaidMember(name.c_str()) != -1) {
+							else if (IsRaidMember(name.c_str())) {
 								bOktoRez = TRUE;
 							}
 						}

@@ -148,8 +148,10 @@ bool ShouldTakeRez() {
 				}
 				if (bOktoRez && pct >= AutoRezPct) {
 					if (!bReturn) {
-						char RezCaster[MAX_STRING] = "";
-						GetArg(RezCaster, confirmationText.c_str(), 1);
+						char mutableConfirmationText[MAX_STRING] = { 0 };
+						strcpy_s(mutableConfirmationText, confirmationText.c_str());
+						char RezCaster[MAX_STRING] = { 0 };
+						GetArg(RezCaster, mutableConfirmationText, 1);
 						if (strlen(RezCaster)) {
 							if (gAnonymize) {
 								int len = strlen(RezCaster);

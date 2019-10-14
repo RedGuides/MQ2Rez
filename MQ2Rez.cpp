@@ -152,7 +152,11 @@ bool ShouldTakeRez() {
 						GetArg(RezCaster, InputCXStr, 1);
 						if (strlen(RezCaster)) {
 							if (gAnonymize) {
-								Anonymize(RezCaster, MAX_STRING);
+								if (!Anonymize(RezCaster, MAX_STRING, 2)) {
+									for (int i = 1; i < strlen(RezCaster) - 1; i++) {
+										RezCaster[i] = '*';
+									}
+								}
 							}
 								WriteChatf("%s\ayReceived a rez from \ap%s \ayfor \ag%i \aypercent. ", PLUGINMSG, RezCaster, pct);
 						}

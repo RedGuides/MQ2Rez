@@ -21,7 +21,7 @@ PLUGIN_VERSION(VERSION);
 //Variables
 bool AutoRezAccept = false;
 bool CommandPending = false;
-bool DoCommand = false;
+bool bDoCommand = false;
 bool Initialized = false;
 bool SafeMode = false;
 bool VoiceNotify = false;
@@ -85,7 +85,7 @@ PLUGIN_API VOID OnPulse(VOID)
 	if (!AutoRezAccept) return;
 	if (++Pulse < PulseDelay) return;
 	Pulse = 0;
-	if (DoCommand && CommandPending && !IAmDead()) {
+	if (bDoCommand && CommandPending && !IAmDead()) {
 		CommandPending = false;
 		EzCommand(RezCommand);
 	}
@@ -269,10 +269,10 @@ void TheRezCommand(PSPAWNINFO pCHAR, PCHAR szLine)
 		GetPrivateProfileString("MQ2Rez", "Command Line", 0, RezCommand, MAX_STRING, INIFileName);
 		strcpy_s(RezCommand, Arg);
 		if (RezCommand[0] == '\0' || !_stricmp(RezCommand, "DISABLED")) {
-			DoCommand = false;
+			bDoCommand = false;
 		}
 		else {
-			DoCommand = true;
+			bDoCommand = true;
 		}
 		return;
 	}
@@ -307,7 +307,7 @@ void AcceptRez()
 	WriteChatf("%s\agAccepting Rez", PLUGINMSG);
 	AcceptedRez = GetTickCount64() + 5000;
 	LeftClickWnd("ConfirmationDialogBox", "Yes_Button");
-	if (DoCommand) CommandPending = true;
+	if (bDoCommand) CommandPending = true;
 }
 bool CanRespawn()
 {
@@ -384,10 +384,10 @@ void DoINIThings() {
 	{
 		if (_stricmp(RezCommand, "DISABLED"))
 			WritePrivateProfileString("MQ2Rez", "Command Line", "DISABLED", INIFileName);
-		DoCommand = false;
+		bDoCommand = false;
 	}
 	else
-		DoCommand = true;
+		bDoCommand = true;
 }
 bool atob(char x[MAX_STRING])
 {

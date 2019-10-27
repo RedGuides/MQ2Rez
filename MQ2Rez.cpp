@@ -13,7 +13,7 @@
 
 #define PLUGINMSG "\aw[\agMQ2Rez\aw]\ao:: "
 #define PLUGIN_NAME "MQ2Rez"
-#include <MQ2Plugin.h>
+#include <mq/Plugin.h>
 PreSetup(PLUGIN_NAME);
 float VERSION = 3.4f;
 PLUGIN_VERSION(VERSION);

@@ -300,7 +300,7 @@ void DisplayHelp() {
 }
 inline bool InGame()
 {
-	return(GetGameState() == GAMESTATE_INGAME && GetCharInfo() && GetCharInfo()->pSpawn && GetCharInfo2());
+	return(GetGameState() == GAMESTATE_INGAME && GetCharInfo() && GetCharInfo()->pSpawn && GetPcProfile());
 }
 void AcceptRez()
 {

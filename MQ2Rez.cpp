@@ -153,7 +153,7 @@ bool ShouldTakeRez() {
 						if (strlen(RezCaster)) {
 							if (gAnonymize) {
 								if (!Anonymize(RezCaster, MAX_STRING, 2)) {
-									for (int i = 1; i < strlen(RezCaster) - 1; i++) {
+									for (int i = 1; i < (int)strlen(RezCaster) - 1; i++) {
 										RezCaster[i] = '*';
 									}
 								}

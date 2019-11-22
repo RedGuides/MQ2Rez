@@ -10,16 +10,21 @@
 // v3.4 - ChatWithThisName - 05-21-2019 - Complete rewrite, loses /rez delay, fixes Safe Mode, Fixes voice notify, now 
 //        reports who you accepted the rez from and the percentage, adds color to outputs, adds /rez settings -> outputs current settings. 
 // v3.5 - ChatWithThisName - 10/14/2019 - Add ReleaseToBind toggle using /rez Release. 0/1/on/off as options. Allows immediate release to bind. Accept must be on!
+#pragma once
+#include "MQ2Rez.h"
+#include "RezType.h"
+#include "../MQ2Plugin.h"
 
 #define PLUGINMSG "\aw[\agMQ2Rez\aw]\ao:: "
 #define PLUGIN_NAME "MQ2Rez"
-#include "../MQ2Plugin.h"
 PreSetup(PLUGIN_NAME);
 float VERSION = 3.5f;
 PLUGIN_VERSION(VERSION);
 
+
+
 //Variables
-bool AutoRezAccept = false;
+extern bool AutoRezAccept = false;
 bool CommandPending = false;
 bool DoCommand = false;
 bool Initialized = false;
@@ -41,28 +46,18 @@ unsigned __int64 AcceptedRez = GetTickCount64();
 ULONGLONG RezDelay = 100;
 ULONGLONG RezDelayTimer = 0;
 
-//Prototypes
-bool atob(char x[MAX_STRING]);
-bool CanRespawn();
-bool IAmDead();
-bool ShouldTakeRez();
-inline bool InGame();
-
-void AcceptRez();
-void DisplayHelp();
-void DoINIThings();
-void LeftClickWnd(PCHAR MyWndName, PCHAR MyButton);
-void ShowSettings();
-void SpawnAtCorpse();
-void TheRezCommand(PSPAWNINFO pCHAR, PCHAR zLine);
 
 PLUGIN_API VOID InitializePlugin(VOID)
 {
 	AddCommand("/rez", TheRezCommand);
+	AddMQ2Data("Rez", dataRez);
+	pRezType = new MQ2RezType;
 }
 PLUGIN_API VOID ShutdownPlugin(VOID)
 {
 	RemoveCommand("/rez");
+	RemoveMQ2Data("Rez");
+	delete pRezType;
 }
 PLUGIN_API VOID SetGameState(DWORD GameState)
 {

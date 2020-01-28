@@ -72,28 +72,28 @@ class MQ2RezType final : public MQ2Type {
 			{
 				case Version:
 					Dest.Float = MQ2Version;
-					Dest.Type = pFloatType;
+					Dest.Type = mq::datatypes::pFloatType;
 					return true;
 				case Accept:
 					Dest.Int = AutoRezAccept;
-					Dest.Type = pBoolType;
+					Dest.Type = mq::datatypes::pBoolType;
 					return true;
 				case Percent:
 				case Pct:
 					Dest.Int = AutoRezPct;
-					Dest.Type = pIntType;
+					Dest.Type = mq::datatypes::pIntType;
 					return true;
 				case xSafeMode:
 					Dest.Int = SafeMode;
-					Dest.Type = pBoolType;
+					Dest.Type = mq::datatypes::pBoolType;
 					return true;
 				case Voice:
 					Dest.Int = VoiceNotify;
-					Dest.Type = pBoolType;
+					Dest.Type = mq::datatypes::pBoolType;
 					return true;
 				case Release:
 					Dest.Int = ReleaseToBind;
-					Dest.Type = pBoolType;
+					Dest.Type = mq::datatypes::pBoolType;
 					return true;
 				default:
 					return false;

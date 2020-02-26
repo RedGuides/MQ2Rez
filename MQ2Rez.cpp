@@ -35,7 +35,7 @@ int Pulse = 0;
 int PulseDelay = 20;
 int AutoRezPct = 96;
 
-unsigned __int64 AcceptedRez = GetTickCount64();
+uint64_t AcceptedRez = GetTickCount64();
 
 class MQ2RezType* pRezType = nullptr;
 class MQ2RezType final : public MQ2Type {
@@ -168,17 +168,10 @@ bool ShouldTakeRez()
 						strcpy_s(mutableConfirmationText, confirmationText.c_str());
 						char RezCaster[MAX_STRING] = { 0 };
 						GetArg(RezCaster, mutableConfirmationText, 1);
-						if (strlen(RezCaster)) {
-							if (gAnonymize) {
-								if (!Anonymize(RezCaster, MAX_STRING, 2)) {
-									for (int i = 1; i < static_cast<int>(strlen(RezCaster)) - 1; ++i) {
-										RezCaster[i] = '*';
-									}
-								}
-							}
-							WriteChatf("%s\ayReceived a rez from \ap%s \ayfor \ag%i \aypercent. ", PLUGINMSG, RezCaster, pct);
+						if (RezCaster[0] == '\0') {
+							strcpy_s(RezCaster, "Unknown");
 						}
-
+						WriteChatf("%s\ayReceived a rez from \ap%s \ayfor \ag%i \aypercent. ", PLUGINMSG, RezCaster, pct);
 					}
 					else {
 						WriteChatf("%s\ayReceived a no exp call to my corpse", PLUGINMSG);
@@ -370,6 +363,7 @@ bool CanRespawn()
 	}
 	return false;
 }
+
 void LeftClickWnd(PCHAR MyWndName, PCHAR MyButton) {
 	if (CSidlScreenWnd* pMyWnd = (CSidlScreenWnd*)FindMQ2Window(MyWndName)) {
 		if (pMyWnd->IsVisible() && pMyWnd->IsEnabled()) {

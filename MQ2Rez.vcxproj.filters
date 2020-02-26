@@ -18,9 +18,6 @@
     <ClCompile Include="MQ2Rez.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RezType.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\MQ2Plugin.h">

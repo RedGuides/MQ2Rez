@@ -18,7 +18,7 @@
 #define PLUGINMSG "\aw[\agMQ2Rez\aw]\ao:: "
 #define PLUGIN_NAME "MQ2Rez"
 PreSetup(PLUGIN_NAME);
-float VERSION = 3.5f;
+float VERSION = 3.7f;
 PLUGIN_VERSION(VERSION);
 
 
@@ -36,7 +36,6 @@ bool bQuiet = false;
 
 char RezCommand[MAX_STRING] = { 0 };
 
-
 int Pulse = 0;
 int PulseDelay = 20;
 int AutoRezPct = 0;
@@ -47,14 +46,12 @@ uint64_t AcceptedRez = GetTickCount64();
 uint64_t RezDelay = 100;
 uint64_t RezDelayTimer = 0;
 
-
 //Prototypes
 bool atob(char x[MAX_STRING]);
 bool CanRespawn();
 bool IAmDead();
 bool ShouldTakeRez();
 inline bool InGame();
-
 void AcceptRez();
 void DisplayHelp();
 void DoINIThings();
@@ -185,10 +182,18 @@ PLUGIN_API VOID SetGameState(DWORD GameState)
 		Initialized = false;//will force it to load the settings from the INI once you are back in game.
 	}
 
-	if (gGameState == GAMESTATE_INGAME && InGame())
+	if (gGameState == GAMESTATE_INGAME)
 	{
 		//Update the INI name.
-		sprintf_s(INIFileName, "%s\\%s_%s.ini", gszINIPath, EQADDR_SERVERNAME, GetCharInfo()->Name);
+		if (!Initialized) {
+			sprintf_s(INIFileName, "%s\\%s_%s.ini", gszINIPath, EQADDR_SERVERNAME, GetCharInfo()->Name);
+			WriteChatf("MQ2Rez INI: %s", INIFileName);
+			WriteChatf("%s\aoInitialized. Version \ag%2.2f", PLUGINMSG, VERSION);
+			WriteChatf("%s\awType \ay/rez help\aw for list of commands.", PLUGINMSG);
+			DoINIThings();
+			Initialized = true;
+			ShowSettings();
+		}
 	}
 }
 
@@ -196,14 +201,6 @@ PLUGIN_API VOID OnPulse(VOID)
 {
 	if (!InGame())
 		return;
-
-	if (!Initialized) {
-		Initialized = true;
-		WriteChatf("%s\aoInitialized. Version \ag%2.2f", PLUGINMSG, VERSION);
-		WriteChatf("%s\awType \ay/rez help\aw for list of commands.", PLUGINMSG);
-		DoINIThings();
-		ShowSettings();
-	}
 
 	if (!AutoRezAccept)
 		return;

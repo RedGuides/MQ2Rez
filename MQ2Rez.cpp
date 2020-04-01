@@ -47,7 +47,7 @@ uint64_t RezDelay = 100;
 uint64_t RezDelayTimer = 0;
 
 //Prototypes
-bool atob(char *x);
+bool atob(char* x);
 bool CanRespawn();
 bool IAmDead();
 bool ShouldTakeRez();
@@ -87,7 +87,7 @@ public:
 
 	~MQ2RezType(){}
 
-	bool GetMember(MQ2VARPTR VarPtr, char *Member, char *Index, MQ2TYPEVAR& Dest)
+	bool GetMember(MQ2VARPTR VarPtr, char* Member, char* Index, MQ2TYPEVAR& Dest)
 	{
 		PMQ2TYPEMEMBER pMember = MQ2RezType::FindMember(Member);
 		if (!pMember)
@@ -137,7 +137,7 @@ public:
 		}
 	}
 
-	bool ToString(MQ2VARPTR VarPtr, char *Destination)
+	bool ToString(MQ2VARPTR VarPtr, char* Destination)
 	{
 		return true;
 	}
@@ -146,7 +146,7 @@ public:
 	{
 		return false;
 	}
-	bool FromString(MQ2VARPTR& VarPtr, char *Source)
+	bool FromString(MQ2VARPTR& VarPtr, char* Source)
 	{
 		return false;
 	}
@@ -155,7 +155,7 @@ public:
 
 MQ2RezType* pRezType = nullptr;
 
-int dataRez(char *szIndex, MQ2TYPEVAR& Ret)
+int dataRez(char* szIndex, MQ2TYPEVAR& Ret)
 {
 	Ret.DWord = 1;
 	Ret.Type = pRezType;
@@ -306,7 +306,7 @@ bool IAmDead() {
 	return false;
 }
 
-void TheRezCommand(PSPAWNINFO pCHAR, char *szLine)
+void TheRezCommand(PSPAWNINFO pCHAR, char* szLine)
 {
 	char Arg[MAX_STRING] = { 0 };
 	GetArg(Arg, szLine, 1);
@@ -524,7 +524,7 @@ void SpawnAtCorpse()
 	LeftClickWnd("RespawnWnd", "RW_SelectButton");
 }
 
-void LeftClickWnd(char* MyWndName, char *MyButton) {
+void LeftClickWnd(char* MyWndName, char* MyButton) {
 	CXWnd* pMyWnd = FindMQ2Window(MyWndName);
 	if (pMyWnd && pMyWnd->IsVisible() && pMyWnd->IsEnabled()) {
 		if (CXWnd* pWnd = pMyWnd->GetChildItem(MyButton)) {
@@ -533,7 +533,7 @@ void LeftClickWnd(char* MyWndName, char *MyButton) {
 	}
 }
 
-void VerifyINI(char *Section, char *Key, char *Default)
+void VerifyINI(char* Section, char* Key, char* Default)
 {
 	char temp[MAX_STRING] = { 0 };
 	if (GetPrivateProfileString(Section, Key, 0, temp, MAX_STRING, INIFileName) == 0)
@@ -585,7 +585,7 @@ void DoINIThings() {
 		DoCommand = true;
 }
 
-bool atob(char *x)
+bool atob(char* x)
 {
 	if (!_stricmp(x, "true") || atoi(x) != 0 || !_stricmp(x, "on"))
 		return true;

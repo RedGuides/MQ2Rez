@@ -47,7 +47,7 @@ uint64_t RezDelay = 100;
 uint64_t RezDelayTimer = 0;
 
 //Prototypes
-bool atob(char x[MAX_STRING]);
+bool atob(char *x);
 bool CanRespawn();
 bool IAmDead();
 bool ShouldTakeRez();
@@ -87,7 +87,7 @@ public:
 
 	~MQ2RezType(){}
 
-	bool GetMember(MQ2VARPTR VarPtr, PCHAR Member, PCHAR Index, MQ2TYPEVAR& Dest)
+	bool GetMember(MQ2VARPTR VarPtr, char *Member, char *Index, MQ2TYPEVAR& Dest)
 	{
 		PMQ2TYPEMEMBER pMember = MQ2RezType::FindMember(Member);
 		if (!pMember)
@@ -137,7 +137,7 @@ public:
 		}
 	}
 
-	bool ToString(MQ2VARPTR VarPtr, PCHAR Destination)
+	bool ToString(MQ2VARPTR VarPtr, char *Destination)
 	{
 		return true;
 	}
@@ -146,7 +146,7 @@ public:
 	{
 		return false;
 	}
-	bool FromString(MQ2VARPTR& VarPtr, PCHAR Source)
+	bool FromString(MQ2VARPTR& VarPtr, char *Source)
 	{
 		return false;
 	}
@@ -155,28 +155,28 @@ public:
 
 MQ2RezType* pRezType = nullptr;
 
-BOOL dataRez(PCHAR szIndex, MQ2TYPEVAR& Ret)
+int dataRez(char *szIndex, MQ2TYPEVAR& Ret)
 {
 	Ret.DWord = 1;
 	Ret.Type = pRezType;
 	return true;
 }
 
-PLUGIN_API VOID InitializePlugin(VOID)
+PLUGIN_API void InitializePlugin()
 {
 	AddCommand("/rez", TheRezCommand);
 	AddMQ2Data("Rez", dataRez);
 	pRezType = new MQ2RezType;
 }
 
-PLUGIN_API VOID ShutdownPlugin(VOID)
+PLUGIN_API void ShutdownPlugin()
 {
 	RemoveCommand("/rez");
 	RemoveMQ2Data("Rez");
 	delete pRezType;
 }
 
-PLUGIN_API VOID SetGameState(DWORD GameState)
+PLUGIN_API void SetGameState(unsigned long GameState)
 {
 	if (gGameState == GAMESTATE_CHARSELECT) {
 		Initialized = false;//will force it to load the settings from the INI once you are back in game.
@@ -197,7 +197,7 @@ PLUGIN_API VOID SetGameState(DWORD GameState)
 	}
 }
 
-PLUGIN_API VOID OnPulse(VOID)
+PLUGIN_API void OnPulse()
 {
 	if (!InGame())
 		return;
@@ -308,7 +308,7 @@ bool IAmDead() {
 
 void TheRezCommand(PSPAWNINFO pCHAR, char *szLine)
 {
-	char Arg[MAX_STRING];
+	char Arg[MAX_STRING] = { 0 };
 	GetArg(Arg, szLine, 1);
 	//help
 	if (!_stricmp("help", Arg)) {
@@ -523,6 +523,7 @@ void SpawnAtCorpse()
 	AcceptedRez = GetTickCount64();
 	LeftClickWnd("RespawnWnd", "RW_SelectButton");
 }
+
 void LeftClickWnd(char* MyWndName, char *MyButton) {
 	CXWnd* pMyWnd = FindMQ2Window(MyWndName);
 	if (pMyWnd && pMyWnd->IsVisible() && pMyWnd->IsEnabled()) {
@@ -532,7 +533,7 @@ void LeftClickWnd(char* MyWndName, char *MyButton) {
 	}
 }
 
-void VerifyINI(char Section[MAX_STRING], char Key[MAX_STRING], char Default[MAX_STRING])
+void VerifyINI(char *Section, char *Key, char *Default)
 {
 	char temp[MAX_STRING] = { 0 };
 	if (GetPrivateProfileString(Section, Key, 0, temp, MAX_STRING, INIFileName) == 0)
@@ -584,7 +585,7 @@ void DoINIThings() {
 		DoCommand = true;
 }
 
-bool atob(char x[MAX_STRING])
+bool atob(char *x)
 {
 	if (!_stricmp(x, "true") || atoi(x) != 0 || !_stricmp(x, "on"))
 		return true;

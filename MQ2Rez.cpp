@@ -12,21 +12,17 @@
 // v3.5 - ChatWithThisName - 10/14/2019 - Add ReleaseToBind toggle using /rez Release. 0/1/on/off as options. Allows immediate release to bind. Accept must be on!
 // v3.6 - ChatWithThisName - 10/24/2019 - Add /rez silent on|off to allow the users to remove text output when recieving a rez. Updated help and showsettings
 // v3.7 - ChatWithThisName - 11/23/2019 - Add Rez datatype.
-#pragma once
 #include "../MQ2Plugin.h"
 
-#define PLUGINMSG "\aw[\agMQ2Rez\aw]\ao:: "
-#define PLUGIN_NAME "MQ2Rez"
-PreSetup(PLUGIN_NAME);
-float VERSION = 3.7f;
-PLUGIN_VERSION(VERSION);
+PreSetup("MQ2Rez");
+PLUGIN_VERSION(3.8);
 
-
+constexpr auto PLUGINMSG = "\aw[\agMQ2Rez\aw]\ao:: ";
 
 //Variables
 bool AutoRezAccept = false;
 bool CommandPending = false;
-bool DoCommand = false;
+bool bDoCommand = false;
 bool Initialized = false;
 bool SafeMode = false;
 bool VoiceNotify = false;
@@ -36,29 +32,16 @@ bool bQuiet = false;
 
 char RezCommand[MAX_STRING] = { 0 };
 
-int Pulse = 0;
-int PulseDelay = 20;
-int AutoRezPct = 0;
+int AutoRezPct = 96;
 
 uint64_t AcceptedRez = GetTickCount64();
 
-//Not using rezdelay stuff.
-uint64_t RezDelay = 100;
-uint64_t RezDelayTimer = 0;
-
-//Prototypes
-bool atob(char* x);
-bool CanRespawn();
-bool IAmDead();
-bool ShouldTakeRez();
-inline bool InGame();
-void AcceptRez();
-void DisplayHelp();
-void DoINIThings();
-void LeftClickWnd(char* MyWndName, char* MyButton);
-void ShowSettings();
-void SpawnAtCorpse();
-void TheRezCommand(PSPAWNINFO pCHAR, char* szLine);
+enum class eINIOptions
+{
+	WriteOnly,
+	ReadAndWrite,
+	ReadOnly
+};
 
 class MQ2RezType : public MQ2Type
 {
@@ -76,13 +59,13 @@ public:
 
 	MQ2RezType() : MQ2Type("Rez")
 	{
-		TypeMember(Version);//1,Float
-		TypeMember(Accept);//2,Bool
-		TypeMember(Percent);//3,Int
-		TypeMember(Pct);//4,Int
-		AddMember(xSafeMode, "SafeMode");//5,Bool
-		TypeMember(Voice);//6,Bool
-		TypeMember(Release);//7,Bool
+		TypeMember(Version);
+		TypeMember(Accept);
+		TypeMember(Percent);
+		TypeMember(Pct);
+		AddMember(xSafeMode, "SafeMode");
+		TypeMember(Voice);
+		TypeMember(Release);
 	};
 
 	~MQ2RezType(){}
@@ -95,62 +78,38 @@ public:
 		switch ((RezMembers)pMember->ID)
 		{
 			case Version:
-			{
-				Dest.Float = VERSION;
+				Dest.Float = MQ2Version;
 				Dest.Type = pFloatType;
 				return true;
-			}
 			case Accept:
-			{
 				Dest.Int = AutoRezAccept;
 				Dest.Type = pBoolType;
 				return true;
-			}
-			case Percent://intentional fallthrough
+			case Percent:
 			case Pct:
-			{
 				Dest.Int = AutoRezPct;
 				Dest.Type = pIntType;
 				return true;
-			}
 			case xSafeMode:
-			{
 				Dest.Int = SafeMode;
 				Dest.Type = pBoolType;
 				return true;
-			}
 			case Voice:
-			{
 				Dest.Int = VoiceNotify;
 				Dest.Type = pBoolType;
 				return true;
-			}
 			case Release:
-			{
 				Dest.Int = ReleaseToBind;
 				Dest.Type = pBoolType;
 				return true;
-			}
 			default:
 				return false;
-				break;
 		}
 	}
 
-	bool ToString(MQ2VARPTR VarPtr, char* Destination)
-	{
-		return true;
-	}
-
-	bool FromData(MQ2VARPTR& VarPtr, MQ2TYPEVAR& Source)
-	{
-		return false;
-	}
-	bool FromString(MQ2VARPTR& VarPtr, char* Source)
-	{
-		return false;
-	}
-
+	bool FromData(MQ2VARPTR& VarPtr, MQ2TYPEVAR& Source) { return false; }
+	bool ToString(MQ2VARPTR VarPtr, char* Destination) { return true; }
+	bool FromString(MQ2VARPTR& VarPtr, char* Source) { return false; }
 };
 
 MQ2RezType* pRezType = nullptr;
@@ -159,85 +118,27 @@ int dataRez(char* szIndex, MQ2TYPEVAR& Ret)
 {
 	Ret.DWord = 1;
 	Ret.Type = pRezType;
-	return true;
+	return TRUE;
 }
 
-PLUGIN_API void InitializePlugin()
+bool atob(const char* x)
 {
-	AddCommand("/rez", TheRezCommand);
-	AddMQ2Data("Rez", dataRez);
-	pRezType = new MQ2RezType;
+	if (!_stricmp(x, "true") || !_stricmp(x, "on") || atoi(x) != 0)
+		return true;
+	return false;
 }
 
-PLUGIN_API void ShutdownPlugin()
+bool IAmDead()
 {
-	RemoveCommand("/rez");
-	RemoveMQ2Data("Rez");
-	delete pRezType;
+	if (PSPAWNINFO Me = GetCharInfo()->pSpawn) {
+		if (Me->RespawnTimer)
+			return true;
+	}
+	return false;
 }
 
-PLUGIN_API void SetGameState(unsigned long GameState)
+bool ShouldTakeRez()
 {
-	if (gGameState == GAMESTATE_CHARSELECT) {
-		Initialized = false;//will force it to load the settings from the INI once you are back in game.
-	}
-
-	if (gGameState == GAMESTATE_INGAME)
-	{
-		//Update the INI name.
-		if (!Initialized) {
-			sprintf_s(INIFileName, "%s\\%s_%s.ini", gszINIPath, EQADDR_SERVERNAME, GetCharInfo()->Name);
-			WriteChatf("MQ2Rez INI: %s", INIFileName);
-			WriteChatf("%s\aoInitialized. Version \ag%2.2f", PLUGINMSG, VERSION);
-			WriteChatf("%s\awType \ay/rez help\aw for list of commands.", PLUGINMSG);
-			DoINIThings();
-			Initialized = true;
-			ShowSettings();
-		}
-	}
-}
-
-PLUGIN_API void OnPulse()
-{
-	if (!InGame())
-		return;
-
-	if (!AutoRezAccept)
-		return;
-
-	if (++Pulse < PulseDelay)
-		return;
-
-	Pulse = 0;
-
-	if (DoCommand && CommandPending && !IAmDead()) {
-		CommandPending = false;
-		EzCommand(RezCommand);
-	}
-
-	if (VoiceNotify) {
-		if (!Notified && IAmDead()) {
-			Notified = true;
-			EzCommand("/vt 3 007");
-		}
-		else if (Notified && !IAmDead()) {
-			Notified = false;
-		}
-	}
-
-	if (ShouldTakeRez())
-		AcceptRez();
-
-	if (IAmDead()) {
-		if (GetTickCount64() < AcceptedRez) {
-			if (CanRespawn())
-				SpawnAtCorpse();
-		}
-	}
-}
-
-bool ShouldTakeRez() {
-
 	//Doesn't matter if the accept/decline is open, we want to release to bind
 	if (ReleaseToBind && IAmDead())
 		return true;
@@ -248,7 +149,8 @@ bool ShouldTakeRez() {
 		if (textoutputwnd) {
 			char InputCXStr[MAX_STRING] = { 0 };
 			GetCXStr(textoutputwnd->STMLText, InputCXStr, MAX_STRING);
-			bool bReturn = false, bOktoRez = false;
+			bool bReturn = false;
+			bool bOktoRez = false;
 			int pct = 0;
 
 			if (strstr(InputCXStr, " return you to your corpse")) {
@@ -267,8 +169,9 @@ bool ShouldTakeRez() {
 							bOktoRez = true;
 					}
 				}
-				else
+				else {
 					bOktoRez = true;
+				}
 
 			}
 
@@ -276,15 +179,19 @@ bool ShouldTakeRez() {
 				if (!bReturn) {
 					char RezCaster[MAX_STRING] = { 0 };
 					GetArg(RezCaster, InputCXStr, 1);
-					if (strlen(RezCaster)) {
+					if (RezCaster[0] == '\0') {
+						strcpy_s(RezCaster, "Unknown");
+					}
+					else {
 						if (gAnonymize && !Anonymize(RezCaster, MAX_STRING, 2)) {
 							for (int i = 1; i < (int)strlen(RezCaster) - 1; i++) {
 								RezCaster[i] = '*';
 							}
 						}
+					}
 
-						if (!bQuiet)
-							WriteChatf("%s\ayReceived a rez from \ap%s \ayfor \ag%i \aypercent. ", PLUGINMSG, RezCaster, pct);
+					if (!bQuiet) {
+						WriteChatf("%s\ayReceived a rez from \ap%s \ayfor \ag%i \aypercent. ", PLUGINMSG, RezCaster, pct);
 					}
 				}
 				else if (!bQuiet)
@@ -298,183 +205,182 @@ bool ShouldTakeRez() {
 	return false;
 }
 
-bool IAmDead() {
-	if (PSPAWNINFO Me = GetCharInfo()->pSpawn) {
-		if (Me->RespawnTimer)
-			return true;
+void DisplayHelp()
+{
+	WriteChatf("%s\awUsage:", PLUGINMSG);
+	WriteChatf("%s\aw/rez \ay [help] -> displays this help message", PLUGINMSG);
+	WriteChatf("%s\aw/rez \ayaccept on|off -> Toggle auto-accepting rezbox", PLUGINMSG);
+	WriteChatf("%s\aw/rez \aypct # -> Autoaccepts rezes only if they are higher than # percent", PLUGINMSG);
+	WriteChatf("%s\aw/rez \aysafemode on|off ->Turn on/off safe mode.", PLUGINMSG);
+	WriteChatf("%s\aw/rez \ayrelease -> Release to bind On/Off", PLUGINMSG);
+	WriteChatf("%s\aw/rez \ayvoice on/off -> Turns on voice macro \"Help\". This is local to you only.", PLUGINMSG);
+	WriteChatf("%s\aw/rez \aysilent -> turn On/Off text output when recieving a rez.", PLUGINMSG);
+	WriteChatf("%s\aw/rez \aysetcommand mycommand -> Set the command that you want to run after you are rezzed.", PLUGINMSG);
+	WriteChatf("%s\aw/rez \aysettings -> Show the current settings.", PLUGINMSG);
+}
+
+void ShowSettings() {
+	WriteChatf("%s\ayAccept \ar(%s\ar)", PLUGINMSG, AutoRezAccept ? "\agOn" : "\arOff");
+	WriteChatf("%s\ayAcceptPct \ar(\ag%i\ar)", PLUGINMSG, AutoRezPct);
+	WriteChatf("%s\aySafeMode \ar(%s\ar)", PLUGINMSG, SafeMode ? "\agOn" : "\arOff");
+	WriteChatf("%s\ayRelease to Bind \ar(%s\ar)", PLUGINMSG, ReleaseToBind ? "\agOn" : "\arOff");
+	WriteChatf("%s\ayVoice \ar(%s\ar)", PLUGINMSG, VoiceNotify ? "\agOn" : "\arOff");
+	WriteChatf("%s\aySilent \ar(%s\ar)", PLUGINMSG, bQuiet ? "\agOn" : "\arOff");
+	WriteChatf("%s\ayCommand to run after rez: \ag%s\ax", PLUGINMSG, bDoCommand ? RezCommand : "\arDISABLED");
+}
+
+void DoINIThings(eINIOptions Operation)
+{
+	char temp[MAX_STRING] = { 0 };
+
+	if (Operation == eINIOptions::ReadOnly || Operation == eINIOptions::ReadAndWrite)
+	{
+		GetPrivateProfileString("MQ2Rez", "Accept", AutoRezAccept ? "On" : "Off", temp, MAX_STRING, INIFileName);
+		AutoRezAccept = atob(temp);
+
+		errno_t tmpErr = _itoa_s(AutoRezPct, temp, 10);
+		if (tmpErr != 0) {
+			strcpy_s(temp, "96");
+		}
+		GetPrivateProfileString("MQ2Rez", "RezPct", temp, temp, MAX_STRING, INIFileName);
+		errno = 0;
+		char* endptr;
+		int i = strtol(temp, &endptr, 10);
+		if (errno != ERANGE && endptr != temp && i >= 0 && i <= 100) {
+			AutoRezPct = i;
+		} else {
+			AutoRezPct = 96;
+		}
+
+		GetPrivateProfileString("MQ2Rez", "SafeMode", SafeMode ? "On" : "Off", temp, MAX_STRING, INIFileName);
+		SafeMode = atob(temp);
+
+		GetPrivateProfileString("MQ2Rez", "VoiceNotify", VoiceNotify ? "On" : "Off", temp, MAX_STRING, INIFileName);
+		VoiceNotify = atob(temp);
+
+		GetPrivateProfileString("MQ2Rez", "ReleaseToBind", ReleaseToBind ? "On" : "Off", temp, MAX_STRING, INIFileName);
+		ReleaseToBind = atob(temp);
+
+		GetPrivateProfileString("MQ2Rez", "SilentMode", bQuiet ? "On" : "Off", temp, MAX_STRING, INIFileName);
+		bQuiet = atob(temp);
+
+		GetPrivateProfileString("MQ2Rez", "Command Line", "DISABLED", RezCommand, MAX_STRING, INIFileName);
+		if (RezCommand[0] == '\0' || !_stricmp(RezCommand, "DISABLED"))
+		{
+			strcpy_s(RezCommand, "DISABLED");
+			bDoCommand = false;
+		}
+		else
+		{
+			bDoCommand = true;
+		}
 	}
-	return false;
+
+	if (Operation == eINIOptions::WriteOnly || Operation == eINIOptions::ReadAndWrite)
+	{
+		WritePrivateProfileString("MQ2Rez", "Accept", AutoRezAccept ? "On" : "Off", INIFileName);
+
+		errno_t tmpErr = _itoa_s(AutoRezPct, temp, 10);
+		if (tmpErr != 0) {
+			strcpy_s(temp, "96");
+		}
+		WritePrivateProfileString("MQ2Rez", "RezPct", temp, INIFileName);
+
+		WritePrivateProfileString("MQ2Rez", "SafeMode", SafeMode ? "On" : "Off", INIFileName);
+		WritePrivateProfileString("MQ2Rez", "VoiceNotify", VoiceNotify ? "On" : "Off", INIFileName);
+		WritePrivateProfileString("MQ2Rez", "ReleaseToBind", ReleaseToBind ? "On" : "Off", INIFileName);
+		WritePrivateProfileString("MQ2Rez", "SilentMode", bQuiet ? "On" : "Off", INIFileName);
+		WritePrivateProfileString("MQ2Rez", "Command Line", RezCommand[0] == '\0' ? "DISABLED" : RezCommand, INIFileName);
+	}
+
 }
 
 void TheRezCommand(PSPAWNINFO pCHAR, char* szLine)
 {
 	char Arg[MAX_STRING] = { 0 };
 	GetArg(Arg, szLine, 1);
-	//help
+	bool bWriteIni = true;
+
 	if (!_stricmp("help", Arg)) {
 		DisplayHelp();
-		return;
+		bWriteIni = false;
 	}
-
-	//accept
-	if (!_stricmp("accept", Arg)) {
-		GetArg(Arg, szLine, 2);
-		if (!_stricmp("on", Arg) || !_stricmp("1", Arg)) {
-			WritePrivateProfileString("MQ2Rez", "accept", "on", INIFileName);
-			AutoRezAccept = true;
-		}
-		if (!_stricmp("off", Arg) || !_stricmp("0", Arg)) {
-			WritePrivateProfileString("MQ2Rez", "accept", "off", INIFileName);
-			AutoRezAccept = false;
-		}
-		WriteChatf("%s\ayAccept\ar(%s\ar)", PLUGINMSG, (AutoRezAccept ? "\agOn" : "\arOff"));
-		return;
-	}
-
-	//voice
-	if (!_stricmp("voice", Arg)) {
-		GetArg(Arg, szLine, 2);
-		if (!_stricmp("on", Arg) || !_stricmp("1", Arg)) {
-			WritePrivateProfileString("MQ2Rez", "VoiceNotify", "1", INIFileName);
-			VoiceNotify = true;
-		}
-		else if (!_stricmp("off", Arg) || !_stricmp("0", Arg)) {
-			WritePrivateProfileString("MQ2Rez", "VoiceNotify", "0", INIFileName);
-			VoiceNotify = false;
-		}
-		WriteChatf("%s\ayVoice\ar(%s\ar)", PLUGINMSG, (VoiceNotify ? "\agOn" : "\arOff"));
-		return;
-	}
-
-	//pct
-	if (!_stricmp("pct", Arg) || !_stricmp("acceptpct", Arg)) {
-		GetArg(Arg, szLine, 2);
-		bool valid = true;
-		if (IsNumber(Arg)) {
-			if (atoi(Arg) <= 100 && atoi(Arg) >= 0) {
-				WritePrivateProfileString("MQ2Rez", "RezPct", Arg, INIFileName);
-				AutoRezPct = atoi(Arg);
-				WriteChatf("%s\ayAcceptPct\ar(\ag%i\ar)", PLUGINMSG, AutoRezPct);
-				return;
-			}
-			else {
-				valid = false;
-			}
-		}
-		else {
-			valid = false;
-		}
-
-		if (!valid) {
-			WriteChatf("%s\ar That was not valid. Please select a number between 0 and 100", PLUGINMSG);
-		}
-		return;
-	}
-
-	//safemode
-	if (!_stricmp("safemode", Arg)) {
-		GetArg(Arg, szLine, 2);
-		if (!_stricmp("on", Arg) || !_stricmp("1", Arg)) {
-			WritePrivateProfileString("MQ2Rez", "SafeMode", "On", INIFileName);
-			SafeMode = true;
-		}
-		if (!_stricmp("off", Arg) || !_stricmp("0", Arg)) {
-			WritePrivateProfileString("MQ2Rez", "SafeMode", "Off", INIFileName);
-			SafeMode = false;
-		}
-		WriteChatf("%s\aySafeMode\ar(%s\ar)", PLUGINMSG, (SafeMode ? "\agOn" : "\arOff"));
-		return;
-	}
-
-	//setcommand
-	if (!_stricmp("setcommand", Arg)) {
-		GetArg(Arg, szLine, 2);
-		if (!strlen(Arg)) {
-			strcpy_s(Arg, "DISABLED");
-		}
-		WritePrivateProfileString("MQ2Rez", "Command Line", Arg, INIFileName);
-		WriteChatf("%s\ayCommand set to: \ag%s\ax", PLUGINMSG, Arg);
-		GetPrivateProfileString("MQ2Rez", "Command Line", 0, RezCommand, MAX_STRING, INIFileName);
-		strcpy_s(RezCommand, Arg);
-		if (RezCommand[0] == '\0' || !_stricmp(RezCommand, "DISABLED")) {
-			DoCommand = false;
-		}
-		else {
-			DoCommand = true;
-		}
-		return;
-	}
-
-	//status
-	if (!_stricmp("status", Arg) || !_stricmp("settings", Arg)) {
-		GetArg(Arg, szLine, 2);
+	else if (!_stricmp("status", Arg) || !_stricmp("settings", Arg)) {
 		ShowSettings();
-		return;
+		bWriteIni = false;
 	}
-
-	if (!_stricmp("release", Arg)) {
+	else if (!_stricmp("accept", Arg)) {
 		GetArg(Arg, szLine, 2);
-		if (!_stricmp("on", Arg) || !_stricmp("1", Arg)) {
-			WritePrivateProfileString("MQ2Rez", "ReleaseToBind", "On", INIFileName);
-			ReleaseToBind = true;
-		}
-		if (!_stricmp("off", Arg) || !_stricmp("0", Arg)) {
-			WritePrivateProfileString("MQ2Rez", "ReleaseToBind", "Off", INIFileName);
-			ReleaseToBind = false;
-		}
-		WriteChatf("%s\ayReleaseToBind\ar(%s\ar)", PLUGINMSG, (ReleaseToBind ? "\agOn" : "\arOff"));
-		return;
+		AutoRezAccept = atob(Arg);
+		WriteChatf("%s\ayAccept\ar (%s\ar)", PLUGINMSG, (AutoRezAccept ? "\agOn" : "\arOff"));
 	}
-
-	if (!_stricmp("silent", Arg)) {
+	else if (!_stricmp("voice", Arg)) {
 		GetArg(Arg, szLine, 2);
-		if (!_stricmp("on", Arg) || !_stricmp("1", Arg)) {
-			WritePrivateProfileString("MQ2Rez", "bQuiet", "On", INIFileName);
-			bQuiet = true;
+		VoiceNotify = atob(Arg);
+		WriteChatf("%s\ayVoice\ar (%s\ar)", PLUGINMSG, (VoiceNotify ? "\agOn" : "\arOff"));
+	}
+	else if (!_stricmp("pct", Arg) || !_stricmp("acceptpct", Arg)) {
+		GetArg(Arg, szLine, 2);
+		errno = 0;
+		char* endptr;
+		int userInput = strtol(Arg, &endptr, 10);
+		if (errno != ERANGE && endptr != Arg && userInput >= 0 && userInput <= 100) {
+			AutoRezPct = userInput;
+			WriteChatf("%s\ayAcceptPct\ar (\ag%i\ar)", PLUGINMSG, AutoRezPct);
 		}
-		if (!_stricmp("off", Arg) || !_stricmp("0", Arg)) {
-			WritePrivateProfileString("MQ2Rez", "bQuiet", "Off", INIFileName);
-			bQuiet = false;
+		else {
+			bWriteIni = false;
+			WriteChatf("%s\ar Accept Percent not a valid percentage (0 through 100): %s", PLUGINMSG, Arg);
 		}
-		WriteChatf("%s\aySilent\ar(%s\ar)", PLUGINMSG, (bQuiet ? "\agOn" : "\arOff"));
-		return;
+	}
+	else if (!_stricmp("safemode", Arg)) {
+		GetArg(Arg, szLine, 2);
+		SafeMode = atob(Arg);
+		WriteChatf("%s\aySafeMode\ar (%s\ar)", PLUGINMSG, (SafeMode ? "\agOn" : "\arOff"));
+	}
+	else if (!_stricmp("setcommand", Arg)) {
+		GetArg(Arg, szLine, 2, 1);
+		if (Arg[0] == '\0' || !_stricmp(Arg, "DISABLED")) {
+			strcpy_s(RezCommand, "DISABLED");
+			bDoCommand = false;
+		}
+		else {
+			// If this is a quoted command, just let GetArg handle it.
+			if (Arg[0] == '"') {
+				GetArg(RezCommand, szLine, 2);
+			}
+			// Otherwise the command is the rest of the line
+			else {
+				char* szTemp = GetNextArg(szLine, 1);
+				strcpy_s(RezCommand, szTemp);
+				
+			}
+			bDoCommand = true;
+		}
+		WriteChatf("%s\ayCommand to run after rez set to: \ag%s\ax", PLUGINMSG, bDoCommand ? RezCommand : "\arDISABLED");
+	}
+	else if (!_stricmp("release", Arg)) {
+		GetArg(Arg, szLine, 2);
+		ReleaseToBind = atob(Arg);
+		WriteChatf("%s\ayReleaseToBind\ar (%s\ar)", PLUGINMSG, (ReleaseToBind ? "\agOn" : "\arOff"));
+	}
+	else if (!_stricmp("silent", Arg)) {
+		GetArg(Arg, szLine, 2);
+		bQuiet = atob(Arg);
+		WriteChatf("%s\aySilent\ar (%s\ar)", PLUGINMSG, (bQuiet ? "\agOn" : "\arOff"));
+	}
+	else
+	{
+		WriteChatf("%s\arInvalid /rez command was used. \ayShowing help!", PLUGINMSG);
+		DisplayHelp();
+		bWriteIni = false;
 	}
 
-	WriteChatf("%s\arInvalid /rez command was used. \ayShowing help!", PLUGINMSG);
-	DisplayHelp();
-}
+	if (bWriteIni)
+	{
+		DoINIThings(eINIOptions::WriteOnly);
+	}
 
-void DisplayHelp() {
-	WriteChatf("%s\awUsage:", PLUGINMSG);
-	WriteChatf("%s\aw/rez \ay -> displays settings", PLUGINMSG);
-	WriteChatf("%s\aw/rez \ayaccept on|off -> Toggle auto-accepting rezbox", PLUGINMSG);
-	WriteChatf("%s\aw/rez \aypct # -> Autoaccepts rezes only if they are higher than # percent", PLUGINMSG);
-	WriteChatf("%s\aw/rez \aysafemode on|off ->Turn on/off safe mode.", PLUGINMSG);
-	WriteChatf("%s\aw/rez \ayrelease -> Release to bind On/Off", PLUGINMSG);
-	//WriteChatf("%s\aw/rez \aydelay #### -> sets time in milliseconds to wait before accepting rez.", PLUGINMSG);
-	WriteChatf("%s\aw/rez \ayvoice on/off -> Turns on voice macro \"Help\". This is local to you only.", PLUGINMSG);
-	WriteChatf("%s\aw/rez \aysilent -> turn On/Off text output when recieving a rez.", PLUGINMSG);
-	WriteChatf("%s\aw/rez \aysetcommand mycommand -> Set the command that you want to run after you are rezzed.", PLUGINMSG);
-	WriteChatf("%s\aw/rez \ayhelp", PLUGINMSG);
-	WriteChatf("%s\aw/rez \aysettings -> Show the current settings.", PLUGINMSG);
-
-}
-
-inline bool InGame()
-{
-	return(GetGameState() == GAMESTATE_INGAME && GetCharInfo() && GetCharInfo()->pSpawn && GetCharInfo2());
-}
-
-void AcceptRez()
-{
-	if (!bQuiet)
-		WriteChatf("%s\agAccepting Rez", PLUGINMSG);
-
-	AcceptedRez = GetTickCount64() + 5000;
-	LeftClickWnd("ConfirmationDialogBox", "Yes_Button");
-
-	if (DoCommand)
-		CommandPending = true;
 }
 
 bool CanRespawn()
@@ -515,15 +421,6 @@ bool CanRespawn()
 	return false;
 }
 
-void SpawnAtCorpse()
-{
-	if (!bQuiet)
-		WriteChatf("%s\ag Respawning", PLUGINMSG);
-
-	AcceptedRez = GetTickCount64();
-	LeftClickWnd("RespawnWnd", "RW_SelectButton");
-}
-
 void LeftClickWnd(char* MyWndName, char* MyButton) {
 	CXWnd* pMyWnd = FindMQ2Window(MyWndName);
 	if (pMyWnd && pMyWnd->IsVisible() && pMyWnd->IsEnabled()) {
@@ -533,78 +430,99 @@ void LeftClickWnd(char* MyWndName, char* MyButton) {
 	}
 }
 
-void VerifyINI(char* Section, char* Key, char* Default)
+void AcceptRez()
 {
-	char temp[MAX_STRING] = { 0 };
-	if (GetPrivateProfileString(Section, Key, 0, temp, MAX_STRING, INIFileName) == 0)
-	{
-		WritePrivateProfileString(Section, Key, Default, INIFileName);
-	}
+	if (!bQuiet)
+		WriteChatf("%s\agAccepting Rez", PLUGINMSG);
+
+	AcceptedRez = GetTickCount64() + 5000;
+	LeftClickWnd("ConfirmationDialogBox", "Yes_Button");
+
+	if (bDoCommand)
+		CommandPending = true;
 }
 
-void DoINIThings() {
-	char temp[MAX_STRING] = { 0 };
-
-	VerifyINI("MQ2Rez", "Accept", "0");
-	GetPrivateProfileString("MQ2Rez", "Accept", "false", temp, MAX_STRING, INIFileName);
-	AutoRezAccept = atob(temp);
-
-	VerifyINI("MQ2Rez", "RezPct", "0");
-	GetPrivateProfileString("MQ2Rez", "RezPct", "96", temp, MAX_STRING, INIFileName);
-	AutoRezPct = atoi(temp);
-
-	VerifyINI("MQ2Rez", "RezDelay", "0");
-	GetPrivateProfileString("MQ2Rez", "RezPct", "100", temp, MAX_STRING, INIFileName);
-	RezDelay = atoi(temp);
-
-	VerifyINI("MQ2Rez", "SafeMode", "0");
-	GetPrivateProfileString("MQ2Rez", "SafeMode", "false", temp, MAX_STRING, INIFileName);
-	SafeMode = atob(temp);
-
-	VerifyINI("MQ2Rez", "VoiceNotify", "0");
-	GetPrivateProfileString("MQ2Rez", "VoiceNotify", "false", temp, MAX_STRING, INIFileName);
-	VoiceNotify = atob(temp);
-
-	VerifyINI("MQ2Rez", "ReleaseToBind", "0");
-	GetPrivateProfileString("MQ2Rez", "ReleaseToBind", "false", temp, MAX_STRING, INIFileName);
-	ReleaseToBind = atob(temp);
-
-	//bQuiet
-	VerifyINI("MQ2Rez", "bQuiet", "0");
-	GetPrivateProfileString("MQ2Rez", "bQuiet", "false", temp, MAX_STRING, INIFileName);
-	bQuiet = atob(temp);
-
-	GetPrivateProfileString("MQ2Rez", "Command Line", 0, RezCommand, MAX_STRING, INIFileName);
-	if (RezCommand[0] == '\0' || !_stricmp(RezCommand, "DISABLED"))
-	{
-		if (_stricmp(RezCommand, "DISABLED"))
-			WritePrivateProfileString("MQ2Rez", "Command Line", "DISABLED", INIFileName);
-		DoCommand = false;
-	}
-	else
-		DoCommand = true;
-}
-
-bool atob(char* x)
+void SpawnAtCorpse()
 {
-	if (!_stricmp(x, "true") || atoi(x) != 0 || !_stricmp(x, "on"))
-		return true;
-	return false;
+	if (!bQuiet)
+		WriteChatf("%s\ag Respawning", PLUGINMSG);
+
+	AcceptedRez = GetTickCount64();
+	LeftClickWnd("RespawnWnd", "RW_SelectButton");
 }
 
-void ShowSettings() {
-	WriteChatf("%s\ayAccept\ar(%s\ar)", PLUGINMSG, (AutoRezAccept ? "\agOn" : "\arOff"));
-	WriteChatf("%s\ayAcceptPct\ar(\ag%i\ar)", PLUGINMSG, AutoRezPct);
-	WriteChatf("%s\aySafeMode\ar(%s\ar)", PLUGINMSG, (SafeMode ? "\agOn" : "\arOff"));
-	WriteChatf("%s\ayRelease to Bind\ar(%s\ar)", PLUGINMSG, (ReleaseToBind ? "\agOn" : "\arOff"));
-	WriteChatf("%s\ayVoice\ar(%s\ar)", PLUGINMSG, (VoiceNotify ? "\agOn" : "\arOff"));
-	WriteChatf("%s\aySilent\ar(%s\ar)", PLUGINMSG, (bQuiet ? "\agOn" : "\arOff"));
+PLUGIN_API void InitializePlugin()
+{
+	AddCommand("/rez", TheRezCommand);
+	pRezType = new MQ2RezType;
+	AddMQ2Data("Rez", dataRez);
+}
 
-	if (RezCommand[0] == '\0' || !_stricmp(RezCommand, "DISABLED")) {
-		WriteChatf("%s\arRez Command to run after rez: \agNot Set\ax.", PLUGINMSG);
+PLUGIN_API void ShutdownPlugin()
+{
+	RemoveCommand("/rez");
+	RemoveMQ2Data("Rez");
+	delete pRezType;
+}
+
+PLUGIN_API void SetGameState(unsigned long GameState)
+{
+	if (gGameState == GAMESTATE_CHARSELECT) {
+		Initialized = false;//will force it to load the settings from the INI once you are back in game.
 	}
-	else {
-		WriteChatf("%s\ayCommand line set to: \ag%s\ax", PLUGINMSG, RezCommand);
+	else if (!Initialized && gGameState == GAMESTATE_INGAME && GetCharInfo())
+	{
+		//Update the INI name.
+		sprintf_s(INIFileName, "%s\\%s_%s.ini", gszINIPath, EQADDR_SERVERNAME, GetCharInfo()->Name);
+		WriteChatf("MQ2Rez INI: %s", INIFileName);
+		WriteChatf("%s\aoInitialized. Version \ag%2.2f", PLUGINMSG, MQ2Version);
+		WriteChatf("%s\awType \ay/rez help\aw for list of commands.", PLUGINMSG);
+		DoINIThings(eINIOptions::ReadAndWrite);
+		Initialized = true;
 	}
-	return;
+}
+
+PLUGIN_API void OnPulse()
+{
+	static int Pulse = 0;
+
+	if (!Initialized)
+		return;
+
+	if (GetGameState() != GAMESTATE_INGAME)
+		return;
+
+	if (!AutoRezAccept)
+		return;
+
+	// Process every 20 pulses
+	if (++Pulse < 20)
+		return;
+
+	Pulse = 0;
+
+	if (bDoCommand && CommandPending && !IAmDead()) {
+		CommandPending = false;
+		EzCommand(RezCommand);
+	}
+
+	if (VoiceNotify) {
+		if (!Notified && IAmDead()) {
+			Notified = true;
+			EzCommand("/vt 3 007");
+		}
+		else if (Notified && !IAmDead()) {
+			Notified = false;
+		}
+	}
+
+	if (ShouldTakeRez())
+		AcceptRez();
+
+	if (IAmDead()) {
+		if (GetTickCount64() < AcceptedRez) {
+			if (CanRespawn())
+				SpawnAtCorpse();
+		}
+	}
 }

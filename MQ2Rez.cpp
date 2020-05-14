@@ -465,20 +465,10 @@ PLUGIN_API void ShutdownPlugin()
 	delete pRezType;
 }
 
-PLUGIN_API void SetGameState(unsigned long GameState)
+PLUGIN_API void SetGameState(DWORD GameState)
 {
-	if (gGameState == GAMESTATE_CHARSELECT) {
-		Initialized = false;//will force it to load the settings from the INI once you are back in game.
-	}
-	else if (!Initialized && gGameState == GAMESTATE_INGAME && GetCharInfo())
-	{
-		//Update the INI name.
-		sprintf_s(INIFileName, "%s\\%s_%s.ini", gszINIPath, EQADDR_SERVERNAME, GetCharInfo()->Name);
-		WriteChatf("MQ2Rez INI: %s", INIFileName);
-		WriteChatf("%s\aoInitialized. Version \ag%2.2f", PLUGINMSG, MQ2Version);
-		WriteChatf("%s\awType \ay/rez help\aw for list of commands.", PLUGINMSG);
-		DoINIThings(eINIOptions::ReadAndWrite);
-		Initialized = true;
+	if (GameState == GAMESTATE_CHARSELECT) {
+		Initialized = false; //will force it to load the settings from the INI once you are back in game.
 	}
 }
 
@@ -487,7 +477,22 @@ PLUGIN_API void OnPulse()
 	static int Pulse = 0;
 
 	if (!Initialized)
-		return;
+	{
+		if (gGameState == GAMESTATE_INGAME && GetCharInfo())
+		{
+			//Update the INI name.
+			sprintf_s(INIFileName, "%s\\%s_%s.ini", gszINIPath, EQADDR_SERVERNAME, GetCharInfo()->Name);
+			WriteChatf("MQ2Rez INI: %s", INIFileName);
+			WriteChatf("%s\aoInitialized. Version \ag%.2f", PLUGINMSG, MQ2Version);
+			WriteChatf("%s\awType \ay/rez help\aw for list of commands.", PLUGINMSG);
+			DoINIThings(eINIOptions::ReadAndWrite);
+			Initialized = true;
+		}
+		else
+		{
+			return;
+		}
+	}
 
 	if (GetGameState() != GAMESTATE_INGAME)
 		return;

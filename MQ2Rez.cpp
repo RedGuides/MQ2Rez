@@ -478,7 +478,7 @@ PLUGIN_API void OnPulse()
 
 	if (!Initialized)
 	{
-		if (gGameState == GAMESTATE_INGAME && GetCharInfo())
+		if (GetGameState() == GAMESTATE_INGAME && GetCharInfo())
 		{
 			//Update the INI name.
 			sprintf_s(INIFileName, "%s\\%s_%s.ini", gszINIPath, EQADDR_SERVERNAME, GetCharInfo()->Name);

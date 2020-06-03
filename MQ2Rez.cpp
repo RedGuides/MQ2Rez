@@ -337,7 +337,6 @@ bool CanRespawn()
 		if (pWnd->IsVisible()) {
 			if (CListWnd* clist = (CListWnd*)pWnd->GetChildItem("OptionsList")) {
 				if (CButtonWnd* cButton = (CButtonWnd*)pWnd->GetChildItem("SelectButton")) {
-					CXStr Str;
 					for (int index = 0; index < clist->ItemsArray.Count; index++) {
 						if (!ReleaseToBind) {
 							if (!clist->GetItemText(index, 1).CompareN("Resurrect", 9)) {

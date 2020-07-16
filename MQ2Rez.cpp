@@ -62,7 +62,7 @@ class MQ2RezType final : public MQ2Type {
 			TypeMember(Release);
 		};
 
-		bool GetMember(MQVarPtr VarPtr, char* Member, char* Index, MQTypeVar& Dest)
+		virtual bool GetMember(MQVarPtr VarPtr, const char* Member, char* Index, MQTypeVar& Dest) override
 		{
 			MQTypeMember* pMember = MQ2RezType::FindMember(Member);
 			if (!pMember)
@@ -102,7 +102,7 @@ class MQ2RezType final : public MQ2Type {
 
 		bool FromData(MQVarPtr &VarPtr, MQTypeVar &Source) { return false; }
 		bool ToString(MQVarPtr &VarPtr, char* Destination) { return true; }
-		bool FromString(MQVarPtr &VarPtr, char *Source) { return false; }
+		virtual bool FromString(MQVarPtr &VarPtr, const char* Source) override { return false; }
 };
 
 

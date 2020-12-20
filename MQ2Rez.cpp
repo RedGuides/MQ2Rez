@@ -143,7 +143,7 @@ bool ShouldTakeRez()
 	if (ReleaseToBind && IAmDead())
 		return true;
 
-	CXWnd* pWnd = FindMQ2Window("ConfirmationDialogBox");
+	CXWnd* pWnd = FindMQ2Window("ConfirmationDialogBox", true);
 	if (pWnd && pWnd->IsVisible()) {
 		CStmlWnd* textoutputwnd = (CStmlWnd*)pWnd->GetChildItem("cd_textoutput");
 		if (textoutputwnd) {

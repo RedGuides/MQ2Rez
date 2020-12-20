@@ -422,7 +422,7 @@ bool CanRespawn()
 }
 
 void LeftClickWnd(char* MyWndName, char* MyButton) {
-	CXWnd* pMyWnd = FindMQ2Window(MyWndName);
+	CXWnd* pMyWnd = FindMQ2Window(MyWndName, true);
 	if (pMyWnd && pMyWnd->IsVisible() && pMyWnd->IsEnabled()) {
 		if (CXWnd* pWnd = pMyWnd->GetChildItem(MyButton)) {
 			SendWndClick2(pWnd, "leftmouseup");

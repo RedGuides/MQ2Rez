@@ -12,7 +12,7 @@
 // v3.5 - ChatWithThisName - 10/14/2019 - Add ReleaseToBind toggle using /rez Release. 0/1/on/off as options. Allows immediate release to bind. Accept must be on!
 // v3.6 - ChatWithThisName - 10/24/2019 - Add /rez silent on|off to allow the users to remove text output when recieving a rez. Updated help and showsettings
 // v3.7 - ChatWithThisName - 11/23/2019 - Add Rez datatype.
-#include "../MQ2Plugin.h"
+#include <mq/Plugin.h>
 
 PreSetup("MQ2Rez");
 PLUGIN_VERSION(3.8);
@@ -43,96 +43,88 @@ enum class eINIOptions
 	ReadOnly
 };
 
-class MQ2RezType : public MQ2Type
-{
-public:
-	enum RezMembers
-	{
-		Version = 1,
-		Accept,
-		Percent,
-		Pct,
-		xSafeMode,
-		Voice,
-		Release
-	};
-
-	MQ2RezType() : MQ2Type("Rez")
-	{
-		TypeMember(Version);
-		TypeMember(Accept);
-		TypeMember(Percent);
-		TypeMember(Pct);
-		AddMember(xSafeMode, "SafeMode");
-		TypeMember(Voice);
-		TypeMember(Release);
-	};
-
-	~MQ2RezType(){}
-
-	bool GetMember(MQ2VARPTR VarPtr, char* Member, char* Index, MQ2TYPEVAR& Dest)
-	{
-		PMQ2TYPEMEMBER pMember = MQ2RezType::FindMember(Member);
-		if (!pMember)
-			return false;
-		switch ((RezMembers)pMember->ID)
+class MQ2RezType* pRezType = nullptr;
+class MQ2RezType final : public MQ2Type {
+	public:
+		enum Members
 		{
-			case Version:
-				Dest.Float = MQ2Version;
-				Dest.Type = pFloatType;
-				return true;
-			case Accept:
-				Dest.Int = AutoRezAccept;
-				Dest.Type = pBoolType;
-				return true;
-			case Percent:
-			case Pct:
-				Dest.Int = AutoRezPct;
-				Dest.Type = pIntType;
-				return true;
-			case xSafeMode:
-				Dest.Int = SafeMode;
-				Dest.Type = pBoolType;
-				return true;
-			case Voice:
-				Dest.Int = VoiceNotify;
-				Dest.Type = pBoolType;
-				return true;
-			case Release:
-				Dest.Int = ReleaseToBind;
-				Dest.Type = pBoolType;
-				return true;
-			default:
-				return false;
-		}
-	}
+			Version = 1,
+			Accept,
+			Percent,
+			Pct,
+			xSafeMode,
+			Voice,
+			Release
+		};
 
-	bool FromData(MQ2VARPTR& VarPtr, MQ2TYPEVAR& Source) { return false; }
-	bool ToString(MQ2VARPTR VarPtr, char* Destination) { return true; }
-	bool FromString(MQ2VARPTR& VarPtr, char* Source) { return false; }
+		MQ2RezType() : MQ2Type("Rez")
+		{
+			TypeMember(Version);
+			TypeMember(Accept);
+			TypeMember(Percent);
+			TypeMember(Pct);
+			AddMember(xSafeMode, "SafeMode");
+			TypeMember(Voice);
+			TypeMember(Release);
+		};
+
+		virtual bool GetMember(MQVarPtr VarPtr, const char* Member, char* Index, MQTypeVar& Dest) override
+		{
+			MQTypeMember* pMember = MQ2RezType::FindMember(Member);
+			if (!pMember)
+				return false;
+
+			switch (static_cast<Members>(pMember->ID))
+			{
+				case Version:
+					Dest.Float = MQ2Version;
+					Dest.Type = mq::datatypes::pFloatType;
+					return true;
+				case Accept:
+					Dest.Int = AutoRezAccept;
+					Dest.Type = mq::datatypes::pBoolType;
+					return true;
+				case Percent:
+				case Pct:
+					Dest.Int = AutoRezPct;
+					Dest.Type = mq::datatypes::pIntType;
+					return true;
+				case xSafeMode:
+					Dest.Int = SafeMode;
+					Dest.Type = mq::datatypes::pBoolType;
+					return true;
+				case Voice:
+					Dest.Int = VoiceNotify;
+					Dest.Type = mq::datatypes::pBoolType;
+					return true;
+				case Release:
+					Dest.Int = ReleaseToBind;
+					Dest.Type = mq::datatypes::pBoolType;
+					return true;
+				default:
+					return false;
+			}
+		}
+
+		bool FromData(MQVarPtr &VarPtr, MQTypeVar &Source) { return false; }
+		bool ToString(MQVarPtr &VarPtr, char* Destination) { return true; }
+		virtual bool FromString(MQVarPtr &VarPtr, const char* Source) override { return false; }
 };
 
-MQ2RezType* pRezType = nullptr;
 
-int dataRez(char* szIndex, MQ2TYPEVAR& Ret)
+bool dataRez(const char* szIndex, MQTypeVar& Ret)
 {
 	Ret.DWord = 1;
 	Ret.Type = pRezType;
-	return TRUE;
-}
-
-bool atob(const char* x)
-{
-	if (!_stricmp(x, "true") || !_stricmp(x, "on") || atoi(x) != 0)
-		return true;
-	return false;
+	return true;
 }
 
 bool IAmDead()
 {
 	if (PSPAWNINFO Me = GetCharInfo()->pSpawn) {
-		if (Me->RespawnTimer)
+		if (Me->RespawnTimer) {
 			return true;
+		}
 	}
 	return false;
 }
@@ -143,30 +135,33 @@ bool ShouldTakeRez()
 	if (ReleaseToBind && IAmDead())
 		return true;
 
-	CXWnd* pWnd = FindMQ2Window("ConfirmationDialogBox", true);
+	CXWnd* pWnd = FindMQ2Window("ConfirmationDialogBox");
 	if (pWnd && pWnd->IsVisible()) {
 		CStmlWnd* textoutputwnd = (CStmlWnd*)pWnd->GetChildItem("cd_textoutput");
 		if (textoutputwnd) {
-			char InputCXStr[MAX_STRING] = { 0 };
-			GetCXStr(textoutputwnd->STMLText, InputCXStr, MAX_STRING);
+			std::string confirmationText{ textoutputwnd->STMLText };
 			bool bReturn = false;
 			bool bOktoRez = false;
 			int pct = 0;
 
-			if (strstr(InputCXStr, " return you to your corpse")) {
+			if (confirmationText.find(" return you to your corpse") != std::string::npos) {
 				pct = 100;
 				bReturn = true;
 			}
 
-			if (strstr(InputCXStr, " percent)") || bReturn) {
-				if (char* pTemp = strstr(InputCXStr, "("))
-					pct = atoi(&pTemp[1]);//set the pct to start on the character after the '('
+			if (confirmationText.find(" percent)") != std::string::npos || bReturn) {
+				auto iBracket = confirmationText.find("(");
+				if (iBracket != std::string::npos) {
+					pct = std::stoi(confirmationText.substr(iBracket + 1));
+				}
 
 				if (SafeMode) {
-					if (char* pDest = strchr(InputCXStr, ' ')) {
-						pDest[0] = '\0';
-						if (IsGroupMember(InputCXStr) || IsFellowshipMember(InputCXStr) || IsGuildMember(InputCXStr) || IsRaidMember(InputCXStr) != -1)
+					auto iSpace = confirmationText.find(' ');
+					if (iSpace != std::string::npos) {
+						auto name = confirmationText.substr(0, iSpace);
+						if (IsGroupMember(name.c_str()) || IsFellowshipMember(name.c_str()) || IsGuildMember(name.c_str()) || IsRaidMember(name.c_str())) {
 							bOktoRez = true;
+						}
 					}
 				}
 				else {
@@ -177,30 +172,27 @@ bool ShouldTakeRez()
 
 			if (bOktoRez && pct >= AutoRezPct) {
 				if (!bReturn) {
+					char mutableConfirmationText[MAX_STRING] = { 0 };
+					strcpy_s(mutableConfirmationText, confirmationText.c_str());
 					char RezCaster[MAX_STRING] = { 0 };
-					GetArg(RezCaster, InputCXStr, 1);
+					GetArg(RezCaster, mutableConfirmationText, 1);
 					if (RezCaster[0] == '\0') {
 						strcpy_s(RezCaster, "Unknown");
-					}
-					else {
-						if (gAnonymize && !Anonymize(RezCaster, MAX_STRING, 2)) {
-							for (int i = 1; i < (int)strlen(RezCaster) - 1; i++) {
-								RezCaster[i] = '*';
-							}
-						}
 					}
 
 					if (!bQuiet) {
 						WriteChatf("%s\ayReceived a rez from \ap%s \ayfor \ag%i \aypercent. ", PLUGINMSG, RezCaster, pct);
 					}
 				}
-				else if (!bQuiet)
+				else if (!bQuiet) {
 					WriteChatf("%s\ayReceived a no exp call to my corpse", PLUGINMSG);
+				}
 
 				return true;
 			}
 		}
 	}
+
 	return false;
 }
 
@@ -218,7 +210,8 @@ void DisplayHelp()
 	WriteChatf("%s\aw/rez \aysettings -> Show the current settings.", PLUGINMSG);
 }
 
-void ShowSettings() {
+void ShowSettings()
+{
 	WriteChatf("%s\ayAccept \ar(%s\ar)", PLUGINMSG, AutoRezAccept ? "\agOn" : "\arOff");
 	WriteChatf("%s\ayAcceptPct \ar(\ag%i\ar)", PLUGINMSG, AutoRezPct);
 	WriteChatf("%s\aySafeMode \ar(%s\ar)", PLUGINMSG, SafeMode ? "\agOn" : "\arOff");
@@ -230,43 +223,18 @@ void ShowSettings() {
 
 void DoINIThings(eINIOptions Operation)
 {
-	char temp[MAX_STRING] = { 0 };
-
 	if (Operation == eINIOptions::ReadOnly || Operation == eINIOptions::ReadAndWrite)
 	{
-		GetPrivateProfileString("MQ2Rez", "Accept", AutoRezAccept ? "On" : "Off", temp, MAX_STRING, INIFileName);
-		AutoRezAccept = atob(temp);
+		AutoRezAccept = GetPrivateProfileBool("MQ2Rez", "Accept", AutoRezAccept, INIFileName);
+		AutoRezPct = GetPrivateProfileInt("MQ2Rez", "RezPct", AutoRezPct, INIFileName);
+		SafeMode = GetPrivateProfileBool("MQ2Rez", "SafeMode", SafeMode, INIFileName);
+		VoiceNotify = GetPrivateProfileBool("MQ2Rez", "VoiceNotify", VoiceNotify, INIFileName);
+		ReleaseToBind = GetPrivateProfileBool("MQ2Rez", "ReleaseToBind", ReleaseToBind, INIFileName);
+		bQuiet = GetPrivateProfileBool("MQ2Rez", "SilentMode", bQuiet, INIFileName);
 
-		errno_t tmpErr = _itoa_s(AutoRezPct, temp, 10);
-		if (tmpErr != 0) {
-			strcpy_s(temp, "96");
-		}
-		GetPrivateProfileString("MQ2Rez", "RezPct", temp, temp, MAX_STRING, INIFileName);
-		errno = 0;
-		char* endptr;
-		int i = strtol(temp, &endptr, 10);
-		if (errno != ERANGE && endptr != temp && i >= 0 && i <= 100) {
-			AutoRezPct = i;
-		} else {
-			AutoRezPct = 96;
-		}
-
-		GetPrivateProfileString("MQ2Rez", "SafeMode", SafeMode ? "On" : "Off", temp, MAX_STRING, INIFileName);
-		SafeMode = atob(temp);
-
-		GetPrivateProfileString("MQ2Rez", "VoiceNotify", VoiceNotify ? "On" : "Off", temp, MAX_STRING, INIFileName);
-		VoiceNotify = atob(temp);
-
-		GetPrivateProfileString("MQ2Rez", "ReleaseToBind", ReleaseToBind ? "On" : "Off", temp, MAX_STRING, INIFileName);
-		ReleaseToBind = atob(temp);
-
-		GetPrivateProfileString("MQ2Rez", "SilentMode", bQuiet ? "On" : "Off", temp, MAX_STRING, INIFileName);
-		bQuiet = atob(temp);
-
-		GetPrivateProfileString("MQ2Rez", "Command Line", "DISABLED", RezCommand, MAX_STRING, INIFileName);
+		GetPrivateProfileString("MQ2Rez", "Command Line", RezCommand, RezCommand, MAX_STRING, INIFileName);
 		if (RezCommand[0] == '\0' || !_stricmp(RezCommand, "DISABLED"))
 		{
-			strcpy_s(RezCommand, "DISABLED");
 			bDoCommand = false;
 		}
 		else
@@ -277,19 +245,13 @@ void DoINIThings(eINIOptions Operation)
 
 	if (Operation == eINIOptions::WriteOnly || Operation == eINIOptions::ReadAndWrite)
 	{
-		WritePrivateProfileString("MQ2Rez", "Accept", AutoRezAccept ? "On" : "Off", INIFileName);
-
-		errno_t tmpErr = _itoa_s(AutoRezPct, temp, 10);
-		if (tmpErr != 0) {
-			strcpy_s(temp, "96");
-		}
-		WritePrivateProfileString("MQ2Rez", "RezPct", temp, INIFileName);
-
-		WritePrivateProfileString("MQ2Rez", "SafeMode", SafeMode ? "On" : "Off", INIFileName);
-		WritePrivateProfileString("MQ2Rez", "VoiceNotify", VoiceNotify ? "On" : "Off", INIFileName);
-		WritePrivateProfileString("MQ2Rez", "ReleaseToBind", ReleaseToBind ? "On" : "Off", INIFileName);
-		WritePrivateProfileString("MQ2Rez", "SilentMode", bQuiet ? "On" : "Off", INIFileName);
-		WritePrivateProfileString("MQ2Rez", "Command Line", RezCommand[0] == '\0' ? "DISABLED" : RezCommand, INIFileName);
+		WritePrivateProfileBool("MQ2Rez", "Accept", AutoRezAccept, INIFileName);
+		WritePrivateProfileInt("MQ2Rez", "RezPct", AutoRezPct, INIFileName);
+		WritePrivateProfileBool("MQ2Rez", "SafeMode", SafeMode, INIFileName);
+		WritePrivateProfileBool("MQ2Rez", "VoiceNotify", VoiceNotify, INIFileName);
+		WritePrivateProfileBool("MQ2Rez", "ReleaseToBind", ReleaseToBind, INIFileName);
+		WritePrivateProfileBool("MQ2Rez", "SilentMode", bQuiet, INIFileName);
+		WritePrivateProfileString("MQ2Rez", "Command Line", RezCommand, INIFileName);
 	}
 
 }
@@ -310,31 +272,29 @@ void TheRezCommand(PSPAWNINFO pCHAR, char* szLine)
 	}
 	else if (!_stricmp("accept", Arg)) {
 		GetArg(Arg, szLine, 2);
-		AutoRezAccept = atob(Arg);
+		AutoRezAccept = GetBoolFromString(Arg, AutoRezAccept);
 		WriteChatf("%s\ayAccept\ar (%s\ar)", PLUGINMSG, (AutoRezAccept ? "\agOn" : "\arOff"));
 	}
 	else if (!_stricmp("voice", Arg)) {
 		GetArg(Arg, szLine, 2);
-		VoiceNotify = atob(Arg);
+		VoiceNotify = GetBoolFromString(Arg, VoiceNotify);
 		WriteChatf("%s\ayVoice\ar (%s\ar)", PLUGINMSG, (VoiceNotify ? "\agOn" : "\arOff"));
 	}
 	else if (!_stricmp("pct", Arg) || !_stricmp("acceptpct", Arg)) {
 		GetArg(Arg, szLine, 2);
-		errno = 0;
-		char* endptr;
-		int userInput = strtol(Arg, &endptr, 10);
-		if (errno != ERANGE && endptr != Arg && userInput >= 0 && userInput <= 100) {
+		int userInput = GetIntFromString(Arg, AutoRezPct);
+		if (userInput >= 0 && userInput <= 100) {
 			AutoRezPct = userInput;
 			WriteChatf("%s\ayAcceptPct\ar (\ag%i\ar)", PLUGINMSG, AutoRezPct);
 		}
 		else {
 			bWriteIni = false;
-			WriteChatf("%s\ar Accept Percent not a valid percentage (0 through 100): %s", PLUGINMSG, Arg);
+			WriteChatf("%s\ar Accept Percent not a valid percentage (0 through 100): %i", PLUGINMSG, userInput);
 		}
 	}
 	else if (!_stricmp("safemode", Arg)) {
 		GetArg(Arg, szLine, 2);
-		SafeMode = atob(Arg);
+		SafeMode = GetBoolFromString(Arg, SafeMode);
 		WriteChatf("%s\aySafeMode\ar (%s\ar)", PLUGINMSG, (SafeMode ? "\agOn" : "\arOff"));
 	}
 	else if (!_stricmp("setcommand", Arg)) {
@@ -352,7 +312,6 @@ void TheRezCommand(PSPAWNINFO pCHAR, char* szLine)
 			else {
 				char* szTemp = GetNextArg(szLine, 1);
 				strcpy_s(RezCommand, szTemp);
-				
 			}
 			bDoCommand = true;
 		}
@@ -360,12 +319,12 @@ void TheRezCommand(PSPAWNINFO pCHAR, char* szLine)
 	}
 	else if (!_stricmp("release", Arg)) {
 		GetArg(Arg, szLine, 2);
-		ReleaseToBind = atob(Arg);
+		ReleaseToBind = GetBoolFromString(Arg, ReleaseToBind);
 		WriteChatf("%s\ayReleaseToBind\ar (%s\ar)", PLUGINMSG, (ReleaseToBind ? "\agOn" : "\arOff"));
 	}
 	else if (!_stricmp("silent", Arg)) {
 		GetArg(Arg, szLine, 2);
-		bQuiet = atob(Arg);
+		bQuiet = GetBoolFromString(Arg, ReleaseToBind);
 		WriteChatf("%s\aySilent\ar (%s\ar)", PLUGINMSG, (bQuiet ? "\agOn" : "\arOff"));
 	}
 	else
@@ -384,36 +343,30 @@ void TheRezCommand(PSPAWNINFO pCHAR, char* szLine)
 
 bool CanRespawn()
 {
-	CXWnd* pWnd = (CXWnd*)pRespawnWnd;
-	if (pWnd && pWnd->IsVisible()) {
-		CListWnd* clist = (CListWnd*)pWnd->GetChildItem("OptionsList");
-		CButtonWnd* cButton = (CButtonWnd*)pWnd->GetChildItem("SelectButton");
-		if (clist && cButton) {
-			CXStr Str;
-			char szOut[MAX_STRING] = { 0 };
-
-			for (int index = 0; index < clist->ItemsArray.Count; index++) {
-				clist->GetItemText(&Str, index, 1);
-				GetCXStr(Str.Ptr, szOut, MAX_STRING);
-
-				if (!ReleaseToBind) {
-					if (!_strnicmp(szOut, "Resurrect", 9)) {
-						if (clist->GetCurSel() != index)
-							clist->SetCurSel(index);
-
-						break;
+	if (CSidlScreenWnd *pWnd = (CSidlScreenWnd *)pRespawnWnd) {
+		if (pWnd->IsVisible()) {
+			if (CListWnd* clist = (CListWnd*)pWnd->GetChildItem("OptionsList")) {
+				if (CButtonWnd* cButton = (CButtonWnd*)pWnd->GetChildItem("SelectButton")) {
+					for (int index = 0; index < clist->ItemsArray.Count; index++) {
+						if (!ReleaseToBind) {
+							if (!clist->GetItemText(index, 1).CompareN("Resurrect", 9)) {
+								if (clist->GetCurSel() != index)
+									clist->SetCurSel(index);
+								break;
+							}
+						}
+						else {
+							if (!clist->GetItemText(index, 1).CompareN("Bind Location", 13)) {
+								if (clist->GetCurSel() != index)
+									clist->SetCurSel(index);
+								break;
+							}
+						}
+					}
+					if (cButton->IsEnabled()) {
+						return true;
 					}
 				}
-				else if (!_strnicmp(szOut, "Bind Location", 13)) {
-					if (clist->GetCurSel() != index)
-						clist->SetCurSel(index);
-
-					break;
-				}
-			}
-
-			if (cButton->IsEnabled()) {
-				return true;
 			}
 		}
 	}
@@ -421,30 +374,34 @@ bool CanRespawn()
 }
 
 void LeftClickWnd(char* MyWndName, char* MyButton) {
-	CXWnd* pMyWnd = FindMQ2Window(MyWndName, true);
-	if (pMyWnd && pMyWnd->IsVisible() && pMyWnd->IsEnabled()) {
-		if (CXWnd* pWnd = pMyWnd->GetChildItem(MyButton)) {
-			SendWndClick2(pWnd, "leftmouseup");
+	if (CSidlScreenWnd* pMyWnd = (CSidlScreenWnd*)FindMQ2Window(MyWndName)) {
+		if (pMyWnd->IsVisible() && pMyWnd->IsEnabled()) {
+			if (CXWnd* pWnd = pMyWnd->GetChildItem(MyButton)) {
+				SendWndClick2(pWnd, "leftmouseup");
+			}
 		}
 	}
 }
 
 void AcceptRez()
 {
-	if (!bQuiet)
+	if (!bQuiet) {
 		WriteChatf("%s\agAccepting Rez", PLUGINMSG);
+	}
 
 	AcceptedRez = GetTickCount64() + 5000;
 	LeftClickWnd("ConfirmationDialogBox", "Yes_Button");
 
-	if (bDoCommand)
+	if (bDoCommand) {
 		CommandPending = true;
+	}
 }
 
 void SpawnAtCorpse()
 {
-	if (!bQuiet)
+	if (!bQuiet) {
 		WriteChatf("%s\ag Respawning", PLUGINMSG);
+	}
 
 	AcceptedRez = GetTickCount64();
 	LeftClickWnd("RespawnWnd", "RW_SelectButton");
@@ -464,7 +421,7 @@ PLUGIN_API void ShutdownPlugin()
 	delete pRezType;
 }
 
-PLUGIN_API void SetGameState(DWORD GameState)
+PLUGIN_API void SetGameState(int GameState)
 {
 	if (GameState == GAMESTATE_CHARSELECT) {
 		Initialized = false; //will force it to load the settings from the INI once you are back in game.
@@ -480,7 +437,7 @@ PLUGIN_API void OnPulse()
 		if (GetGameState() == GAMESTATE_INGAME && GetCharInfo())
 		{
 			//Update the INI name.
-			sprintf_s(INIFileName, "%s\\%s_%s.ini", gszINIPath, EQADDR_SERVERNAME, GetCharInfo()->Name);
+			sprintf_s(INIFileName, "%s\\%s_%s.ini", gPathConfig, EQADDR_SERVERNAME, GetCharInfo()->Name);
 			WriteChatf("MQ2Rez INI: %s", INIFileName);
 			WriteChatf("%s\aoInitialized. Version \ag%.2f", PLUGINMSG, MQ2Version);
 			WriteChatf("%s\awType \ay/rez help\aw for list of commands.", PLUGINMSG);

@@ -51,8 +51,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 3,5
- PRODUCTVERSION 3,5
+ FILEVERSION 3,8
+ PRODUCTVERSION 3,8
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -73,12 +73,11 @@ BEGIN
 #else
             VALUE "FileDescription", "MQ2Rez Release Version"
 #endif
-            VALUE "FileVersion", "3.5"
+            VALUE "FileVersion", "3.8"
             VALUE "InternalName", "MQ2Rez.dll"
-            VALUE "LegalCopyright", "Licensed under the GNU GPL v2"
             VALUE "OriginalFilename", "MQ2Rez.dll"
             VALUE "ProductName", "MQ2Rez"
-            VALUE "ProductVersion", "3.5"
+            VALUE "ProductVersion", "3.8"
         END
     END
     BLOCK "VarFileInfo"

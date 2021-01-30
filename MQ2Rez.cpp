@@ -148,7 +148,7 @@ bool ShouldTakeRez()
 		CStmlWnd* textoutputwnd = (CStmlWnd*)pWnd->GetChildItem("cd_textoutput");
 		if (textoutputwnd) {
 			char InputCXStr[MAX_STRING] = { 0 };
-			GetCXStr(textoutputwnd->STMLText.Ptr, InputCXStr, MAX_STRING);
+			GetCXStr(textoutputwnd->STMLText, InputCXStr, MAX_STRING);
 			bool bReturn = false;
 			bool bOktoRez = false;
 			int pct = 0;

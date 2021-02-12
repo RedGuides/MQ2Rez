@@ -221,7 +221,7 @@ void ShowSettings()
 	WriteChatf("%s\ayCommand to run after rez: \ag%s\ax", PLUGINMSG, bDoCommand ? RezCommand : "\arDISABLED");
 }
 
-void DoINIThings(eINIOptions Operation)
+void DoINIThings(const eINIOptions Operation)
 {
 	if (Operation == eINIOptions::ReadOnly || Operation == eINIOptions::ReadAndWrite)
 	{
@@ -432,26 +432,18 @@ PLUGIN_API void OnPulse()
 {
 	static int Pulse = 0;
 
+	if (GetGameState() != GAMESTATE_INGAME || !pCharData)
+		return;
+
 	if (!Initialized)
 	{
-		if (GetGameState() == GAMESTATE_INGAME && GetCharInfo())
-		{
-			//Update the INI name.
-			sprintf_s(INIFileName, "%s\\%s_%s.ini", gPathConfig, EQADDR_SERVERNAME, GetCharInfo()->Name);
-			WriteChatf("MQ2Rez INI: %s", INIFileName);
-			WriteChatf("%s\aoInitialized. Version \ag%.2f", PLUGINMSG, MQ2Version);
-			WriteChatf("%s\awType \ay/rez help\aw for list of commands.", PLUGINMSG);
-			DoINIThings(eINIOptions::ReadAndWrite);
-			Initialized = true;
-		}
-		else
-		{
-			return;
-		}
+		//Update the INI name.
+		sprintf_s(INIFileName, "%s\\%s_%s.ini", gPathConfig, EQADDR_SERVERNAME, pCharData->Name);
+		WriteChatf("%s\aoInitialized. Version \ag%.2f", PLUGINMSG, MQ2Version);
+		WriteChatf("%s\awType \ay/rez help\aw for list of commands.", PLUGINMSG);
+		DoINIThings(eINIOptions::ReadAndWrite);
+		Initialized = true;
 	}
-
-	if (GetGameState() != GAMESTATE_INGAME)
-		return;
 
 	if (!AutoRezAccept)
 		return;

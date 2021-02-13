@@ -191,11 +191,6 @@ bool ShouldTakeRez()
 				return true;
 			}
 		}
-		else if (ReleaseToBind) {
-			if (IAmDead()) {
-				return true;
-			}
-		}
 	}
 
 	return false;

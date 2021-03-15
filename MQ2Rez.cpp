@@ -43,73 +43,70 @@ enum class eINIOptions
 	ReadOnly
 };
 
-class MQ2RezType* pRezType = nullptr;
-class MQ2RezType final : public MQ2Type {
-	public:
-		enum Members
-		{
-			Version = 1,
-			Accept,
-			Percent,
-			Pct,
-			xSafeMode,
-			Voice,
-			Release
-		};
+class MQ2RezType final : public MQ2Type
+{
+public:
+	enum class Members
+	{
+		Version = 1,
+		Accept,
+		Percent,
+		Pct,
+		SafeMode,
+		Voice,
+		Release
+	};
 
-		MQ2RezType() : MQ2Type("Rez")
-		{
-			TypeMember(Version);
-			TypeMember(Accept);
-			TypeMember(Percent);
-			TypeMember(Pct);
-			AddMember(xSafeMode, "SafeMode");
-			TypeMember(Voice);
-			TypeMember(Release);
-		};
+	MQ2RezType() : MQ2Type("Rez")
+	{
+		ScopedTypeMember(Version);
+		ScopedTypeMember(Accept);
+		ScopedTypeMember(Percent);
+		ScopedTypeMember(Pct);
+		ScopedTypeMember(SafeMode);
+		ScopedTypeMember(Voice);
+		ScopedTypeMember(Release);
+	};
 
-		virtual bool GetMember(MQVarPtr VarPtr, const char* Member, char* Index, MQTypeVar& Dest) override
-		{
-			MQTypeMember* pMember = MQ2RezType::FindMember(Member);
-			if (!pMember)
-				return false;
+	virtual bool GetMember(MQVarPtr VarPtr, const char* Member, char* Index, MQTypeVar& Dest) override
+	{
+		MQTypeMember* pMember = MQ2RezType::FindMember(Member);
+		if (!pMember)
+			return false;
 
-			switch (static_cast<Members>(pMember->ID))
-			{
-				case Version:
-					Dest.Float = MQ2Version;
-					Dest.Type = mq::datatypes::pFloatType;
-					return true;
-				case Accept:
-					Dest.Int = AutoRezAccept;
-					Dest.Type = mq::datatypes::pBoolType;
-					return true;
-				case Percent:
-				case Pct:
-					Dest.Int = AutoRezPct;
-					Dest.Type = mq::datatypes::pIntType;
-					return true;
-				case xSafeMode:
-					Dest.Int = SafeMode;
-					Dest.Type = mq::datatypes::pBoolType;
-					return true;
-				case Voice:
-					Dest.Int = VoiceNotify;
-					Dest.Type = mq::datatypes::pBoolType;
-					return true;
-				case Release:
-					Dest.Int = ReleaseToBind;
-					Dest.Type = mq::datatypes::pBoolType;
-					return true;
-				default:
-					return false;
-			}
+		switch (static_cast<Members>(pMember->ID))
+		{
+		case Members::Version:
+			Dest.Float = MQ2Version;
+			Dest.Type = mq::datatypes::pFloatType;
+			return true;
+		case Members::Accept:
+			Dest.Int = AutoRezAccept;
+			Dest.Type = mq::datatypes::pBoolType;
+			return true;
+		case Members::Percent:
+		case Members::Pct:
+			Dest.Int = AutoRezPct;
+			Dest.Type = mq::datatypes::pIntType;
+			return true;
+		case Members::SafeMode:
+			Dest.Int = SafeMode;
+			Dest.Type = mq::datatypes::pBoolType;
+			return true;
+		case Members::Voice:
+			Dest.Int = VoiceNotify;
+			Dest.Type = mq::datatypes::pBoolType;
+			return true;
+		case Members::Release:
+			Dest.Int = ReleaseToBind;
+			Dest.Type = mq::datatypes::pBoolType;
+			return true;
+		default:
+			return false;
 		}
-
-		bool FromData(MQVarPtr &VarPtr, MQTypeVar &Source) { return false; }
-		bool ToString(MQVarPtr &VarPtr, char* Destination) { return true; }
-		virtual bool FromString(MQVarPtr &VarPtr, const char* Source) override { return false; }
+	}
 };
+MQ2RezType* pRezType = nullptr;
 
 
 bool dataRez(const char* szIndex, MQTypeVar& Ret)

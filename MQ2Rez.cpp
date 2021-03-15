@@ -59,13 +59,13 @@ public:
 
 	MQ2RezType() : MQ2Type("Rez")
 	{
-		ScopedTypeMember(Version);
-		ScopedTypeMember(Accept);
-		ScopedTypeMember(Percent);
-		ScopedTypeMember(Pct);
-		ScopedTypeMember(SafeMode);
-		ScopedTypeMember(Voice);
-		ScopedTypeMember(Release);
+		ScopedTypeMember(Members, Version);
+		ScopedTypeMember(Members, Accept);
+		ScopedTypeMember(Members, Percent);
+		ScopedTypeMember(Members, Pct);
+		ScopedTypeMember(Members, SafeMode);
+		ScopedTypeMember(Members, Voice);
+		ScopedTypeMember(Members, Release);
 	};
 
 	virtual bool GetMember(MQVarPtr VarPtr, const char* Member, char* Index, MQTypeVar& Dest) override

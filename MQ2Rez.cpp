@@ -12,10 +12,12 @@
 // v3.5 - ChatWithThisName - 10/14/2019 - Add ReleaseToBind toggle using /rez Release. 0/1/on/off as options. Allows immediate release to bind. Accept must be on!
 // v3.6 - ChatWithThisName - 10/24/2019 - Add /rez silent on|off to allow the users to remove text output when recieving a rez. Updated help and showsettings
 // v3.7 - ChatWithThisName - 11/23/2019 - Add Rez datatype.
+// v3.9 - Jimbob & Sic - 04/01/2021 - Restore /rez delay functionality
 #include "../MQ2Plugin.h"
+#include <chrono>
 
 PreSetup("MQ2Rez");
-PLUGIN_VERSION(3.8);
+PLUGIN_VERSION(3.9);
 
 constexpr auto PLUGINMSG = "\aw[\agMQ2Rez\aw]\ao:: ";
 
@@ -29,6 +31,8 @@ bool VoiceNotify = false;
 bool Notified = true;
 bool ReleaseToBind = false;
 bool bQuiet = false;
+
+int iDelay = 5100;
 
 char RezCommand[MAX_STRING] = { 0 };
 
@@ -54,7 +58,8 @@ public:
 		Pct,
 		xSafeMode,
 		Voice,
-		Release
+		Release,
+		Delay
 	};
 
 	MQ2RezType() : MQ2Type("Rez")
@@ -66,6 +71,7 @@ public:
 		AddMember(xSafeMode, "SafeMode");
 		TypeMember(Voice);
 		TypeMember(Release);
+		TypeMember(Delay);
 	};
 
 	~MQ2RezType(){}
@@ -102,6 +108,10 @@ public:
 				Dest.Int = ReleaseToBind;
 				Dest.Type = pBoolType;
 				return true;
+			case Delay:
+				Dest.Int = iDelay;
+				Dest.Type = pIntType;
+				return true;
 			default:
 				return false;
 		}
@@ -137,6 +147,27 @@ bool IAmDead()
 	return false;
 }
 
+bool WaitForDelay()
+{
+	static bool bTimerActive = false;
+	static std::chrono::steady_clock::time_point rezDelayTimer = {};
+	if (iDelay > 0)
+	{
+		// If we don't already have a timer, set one to expire iDelay seconds from now
+		if (!bTimerActive) {
+			rezDelayTimer = std::chrono::steady_clock::now() + std::chrono::milliseconds(iDelay);
+			bTimerActive = true;
+			return true; // wait...
+		}
+
+		if (rezDelayTimer > std::chrono::steady_clock::now()) {
+			return true; // wait longer...
+		}
+		bTimerActive = false; // done waiting... reset timer for next rez...
+	}
+	return false; // no delay...
+}
+
 bool ShouldTakeRez()
 {
 	//Doesn't matter if the accept/decline is open, we want to release to bind
@@ -145,6 +176,10 @@ bool ShouldTakeRez()
 
 	CXWnd* pWnd = FindMQ2Window("ConfirmationDialogBox", true);
 	if (pWnd && pWnd->IsVisible()) {
+		//Delay in Rez/Release to bind
+		if (WaitForDelay())
+			return false;
+
 		CStmlWnd* textoutputwnd = (CStmlWnd*)pWnd->GetChildItem("cd_textoutput");
 		if (textoutputwnd) {
 			char InputCXStr[MAX_STRING] = { 0 };
@@ -216,6 +251,7 @@ void DisplayHelp()
 	WriteChatf("%s\aw/rez \ayvoice on/off -> Turns on voice macro \"Help\". This is local to you only.", PLUGINMSG);
 	WriteChatf("%s\aw/rez \aysilent -> turn On/Off text output when recieving a rez.", PLUGINMSG);
 	WriteChatf("%s\aw/rez \aysetcommand mycommand -> Set the command that you want to run after you are rezzed.", PLUGINMSG);
+	WriteChatf("%s\aw/rez \aydelay # -> Accepts rez after # milliseconds.", PLUGINMSG);
 	WriteChatf("%s\aw/rez \aysettings -> Show the current settings.", PLUGINMSG);
 }
 
@@ -226,6 +262,7 @@ void ShowSettings() {
 	WriteChatf("%s\ayRelease to Bind \ar(%s\ar)", PLUGINMSG, ReleaseToBind ? "\agOn" : "\arOff");
 	WriteChatf("%s\ayVoice \ar(%s\ar)", PLUGINMSG, VoiceNotify ? "\agOn" : "\arOff");
 	WriteChatf("%s\aySilent \ar(%s\ar)", PLUGINMSG, bQuiet ? "\agOn" : "\arOff");
+	WriteChatf("%s\ayDelay \ar(\ag%i\ar) milliseconds", PLUGINMSG, iDelay);
 	WriteChatf("%s\ayCommand to run after rez: \ag%s\ax", PLUGINMSG, bDoCommand ? RezCommand : "\arDISABLED");
 }
 
@@ -238,10 +275,7 @@ void DoINIThings(eINIOptions Operation)
 		GetPrivateProfileString("MQ2Rez", "Accept", AutoRezAccept ? "On" : "Off", temp, MAX_STRING, INIFileName);
 		AutoRezAccept = atob(temp);
 
-		errno_t tmpErr = _itoa_s(AutoRezPct, temp, 10);
-		if (tmpErr != 0) {
-			strcpy_s(temp, "96");
-		}
+		_itoa_s(AutoRezPct, temp, 10); // removed error handling here. this should never overflow with a 32 bit integer.
 		GetPrivateProfileString("MQ2Rez", "RezPct", temp, temp, MAX_STRING, INIFileName);
 		errno = 0;
 		char* endptr;
@@ -264,6 +298,8 @@ void DoINIThings(eINIOptions Operation)
 		GetPrivateProfileString("MQ2Rez", "SilentMode", bQuiet ? "On" : "Off", temp, MAX_STRING, INIFileName);
 		bQuiet = atob(temp);
 
+		iDelay = GetPrivateProfileInt("MQ2Rez", "Delay", 5100, INIFileName);
+
 		GetPrivateProfileString("MQ2Rez", "Command Line", "DISABLED", RezCommand, MAX_STRING, INIFileName);
 		if (RezCommand[0] == '\0' || !_stricmp(RezCommand, "DISABLED"))
 		{
@@ -280,16 +316,17 @@ void DoINIThings(eINIOptions Operation)
 	{
 		WritePrivateProfileString("MQ2Rez", "Accept", AutoRezAccept ? "On" : "Off", INIFileName);
 
-		errno_t tmpErr = _itoa_s(AutoRezPct, temp, 10);
-		if (tmpErr != 0) {
-			strcpy_s(temp, "96");
-		}
+		_itoa_s(AutoRezPct, temp, 10); // removed error handling here. a 32 bit integer cannot overflow the buffer.
 		WritePrivateProfileString("MQ2Rez", "RezPct", temp, INIFileName);
 
 		WritePrivateProfileString("MQ2Rez", "SafeMode", SafeMode ? "On" : "Off", INIFileName);
 		WritePrivateProfileString("MQ2Rez", "VoiceNotify", VoiceNotify ? "On" : "Off", INIFileName);
 		WritePrivateProfileString("MQ2Rez", "ReleaseToBind", ReleaseToBind ? "On" : "Off", INIFileName);
 		WritePrivateProfileString("MQ2Rez", "SilentMode", bQuiet ? "On" : "Off", INIFileName);
+
+		_itoa_s(iDelay, temp, 10); // removed error handling here. a 32 bit integer cannot overflow the buffer.
+		WritePrivateProfileString("MQ2Rez", "Delay", temp, INIFileName);
+
 		WritePrivateProfileString("MQ2Rez", "Command Line", RezCommand[0] == '\0' ? "DISABLED" : RezCommand, INIFileName);
 	}
 
@@ -331,6 +368,20 @@ void TheRezCommand(PSPAWNINFO pCHAR, char* szLine)
 		else {
 			bWriteIni = false;
 			WriteChatf("%s\ar Accept Percent not a valid percentage (0 through 100): %s", PLUGINMSG, Arg);
+		}
+	}
+	else if (!_stricmp("delay", Arg)) {
+		GetArg(Arg, szLine, 2);
+		errno = 0;
+		char* endptr;
+		int userInput = strtol(Arg, &endptr, 10);
+		if (errno != ERANGE && endptr != Arg && userInput >= 0) {
+			iDelay = userInput;
+			WriteChatf("%s\ayDelay\ar (\ag%i\ar) milliseconds", PLUGINMSG, userInput);
+		}
+		else {
+			bWriteIni = false;
+			WriteChatf("%s\ar Delay value not a valid ( >= 0 ): %s", PLUGINMSG, Arg);
 		}
 	}
 	else if (!_stricmp("safemode", Arg)) {

@@ -12,10 +12,12 @@
 // v3.5 - ChatWithThisName - 10/14/2019 - Add ReleaseToBind toggle using /rez Release. 0/1/on/off as options. Allows immediate release to bind. Accept must be on!
 // v3.6 - ChatWithThisName - 10/24/2019 - Add /rez silent on|off to allow the users to remove text output when recieving a rez. Updated help and showsettings
 // v3.7 - ChatWithThisName - 11/23/2019 - Add Rez datatype.
+// v3.9 - Jimbob & Sic - 04/01/2021 - Restore /rez delay functionality
 #include <mq/Plugin.h>
+#include <chrono>
 
 PreSetup("MQ2Rez");
-PLUGIN_VERSION(3.8);
+PLUGIN_VERSION(3.9);
 
 constexpr auto PLUGINMSG = "\aw[\agMQ2Rez\aw]\ao:: ";
 
@@ -29,6 +31,8 @@ bool VoiceNotify = false;
 bool Notified = true;
 bool ReleaseToBind = false;
 bool bQuiet = false;
+
+int iDelay = 5100;
 
 char RezCommand[MAX_STRING] = { 0 };
 
@@ -54,7 +58,8 @@ public:
 		Pct,
 		SafeMode,
 		Voice,
-		Release
+		Release,
+		Delay
 	};
 
 	MQ2RezType() : MQ2Type("Rez")
@@ -66,6 +71,7 @@ public:
 		ScopedTypeMember(Members, SafeMode);
 		ScopedTypeMember(Members, Voice);
 		ScopedTypeMember(Members, Release);
+		ScopedTypeMember(Members, Delay);
 	};
 
 	virtual bool GetMember(MQVarPtr VarPtr, const char* Member, char* Index, MQTypeVar& Dest) override
@@ -101,6 +107,10 @@ public:
 			Dest.Int = ReleaseToBind;
 			Dest.Type = mq::datatypes::pBoolType;
 			return true;
+		case Members::Delay:
+			Dest.Int = iDelay;
+			Dest.Type = mq::datatypes::pIntType;
+			return true;
 		default:
 			return false;
 		}
@@ -126,6 +136,27 @@ bool IAmDead()
 	return false;
 }
 
+bool WaitForDelay()
+{
+	static bool bTimerActive = false;
+	static std::chrono::steady_clock::time_point rezDelayTimer = {};
+	if (iDelay > 0)
+	{
+		// If we don't already have a timer, set one to expire iDelay seconds from now
+		if (!bTimerActive) {
+			rezDelayTimer = std::chrono::steady_clock::now() + std::chrono::milliseconds(iDelay);
+			bTimerActive = true;
+			return true; // wait...
+		}
+
+		if (rezDelayTimer > std::chrono::steady_clock::now()) {
+			return true; // wait longer...
+		}
+		bTimerActive = false; // done waiting... reset timer for next rez...
+	}
+	return false; // no delay...
+}
+
 bool ShouldTakeRez()
 {
 	//Doesn't matter if the accept/decline is open, we want to release to bind
@@ -134,6 +165,10 @@ bool ShouldTakeRez()
 
 	CXWnd* pWnd = FindMQ2Window("ConfirmationDialogBox");
 	if (pWnd && pWnd->IsVisible()) {
+		//Delay in Rez/Release to bind
+		if (WaitForDelay())
+			return false;
+
 		CStmlWnd* textoutputwnd = (CStmlWnd*)pWnd->GetChildItem("cd_textoutput");
 		if (textoutputwnd) {
 			std::string confirmationText{ textoutputwnd->STMLText };
@@ -204,6 +239,7 @@ void DisplayHelp()
 	WriteChatf("%s\aw/rez \ayvoice on/off -> Turns on voice macro \"Help\". This is local to you only.", PLUGINMSG);
 	WriteChatf("%s\aw/rez \aysilent -> turn On/Off text output when recieving a rez.", PLUGINMSG);
 	WriteChatf("%s\aw/rez \aysetcommand mycommand -> Set the command that you want to run after you are rezzed.", PLUGINMSG);
+	WriteChatf("%s\aw/rez \aydelay # -> Accepts rez after # milliseconds.", PLUGINMSG);
 	WriteChatf("%s\aw/rez \aysettings -> Show the current settings.", PLUGINMSG);
 }
 
@@ -215,6 +251,7 @@ void ShowSettings()
 	WriteChatf("%s\ayRelease to Bind \ar(%s\ar)", PLUGINMSG, ReleaseToBind ? "\agOn" : "\arOff");
 	WriteChatf("%s\ayVoice \ar(%s\ar)", PLUGINMSG, VoiceNotify ? "\agOn" : "\arOff");
 	WriteChatf("%s\aySilent \ar(%s\ar)", PLUGINMSG, bQuiet ? "\agOn" : "\arOff");
+	WriteChatf("%s\ayDelay \ar(\ag%i\ar) milliseconds", PLUGINMSG, iDelay);
 	WriteChatf("%s\ayCommand to run after rez: \ag%s\ax", PLUGINMSG, bDoCommand ? RezCommand : "\arDISABLED");
 }
 
@@ -224,10 +261,15 @@ void DoINIThings(const eINIOptions Operation)
 	{
 		AutoRezAccept = GetPrivateProfileBool("MQ2Rez", "Accept", AutoRezAccept, INIFileName);
 		AutoRezPct = GetPrivateProfileInt("MQ2Rez", "RezPct", AutoRezPct, INIFileName);
+		if (AutoRezPct < 0 || AutoRezPct > 100)
+		{
+			AutoRezPct = 96;
+		}
 		SafeMode = GetPrivateProfileBool("MQ2Rez", "SafeMode", SafeMode, INIFileName);
 		VoiceNotify = GetPrivateProfileBool("MQ2Rez", "VoiceNotify", VoiceNotify, INIFileName);
 		ReleaseToBind = GetPrivateProfileBool("MQ2Rez", "ReleaseToBind", ReleaseToBind, INIFileName);
 		bQuiet = GetPrivateProfileBool("MQ2Rez", "SilentMode", bQuiet, INIFileName);
+		iDelay = GetPrivateProfileInt("MQ2Rez", "Delay", iDelay, INIFileName);
 
 		GetPrivateProfileString("MQ2Rez", "Command Line", RezCommand, RezCommand, MAX_STRING, INIFileName);
 		if (RezCommand[0] == '\0' || !_stricmp(RezCommand, "DISABLED"))
@@ -248,6 +290,7 @@ void DoINIThings(const eINIOptions Operation)
 		WritePrivateProfileBool("MQ2Rez", "VoiceNotify", VoiceNotify, INIFileName);
 		WritePrivateProfileBool("MQ2Rez", "ReleaseToBind", ReleaseToBind, INIFileName);
 		WritePrivateProfileBool("MQ2Rez", "SilentMode", bQuiet, INIFileName);
+		WritePrivateProfileInt("MQ2Rez", "Delay", iDelay, INIFileName);
 		WritePrivateProfileString("MQ2Rez", "Command Line", RezCommand, INIFileName);
 	}
 
@@ -287,6 +330,18 @@ void TheRezCommand(PSPAWNINFO pCHAR, char* szLine)
 		else {
 			bWriteIni = false;
 			WriteChatf("%s\ar Accept Percent not a valid percentage (0 through 100): %i", PLUGINMSG, userInput);
+		}
+	}
+	else if (!_stricmp("delay", Arg)) {
+		GetArg(Arg, szLine, 2);
+		int userInput = GetIntFromString(Arg, -1);
+		if (userInput >= 0) {
+			iDelay = userInput;
+			WriteChatf("%s\ayDelay\ar (\ag%i\ar) milliseconds", PLUGINMSG, userInput);
+		}
+		else {
+			bWriteIni = false;
+			WriteChatf("%s\ar Delay value not a valid ( >= 0 ): %s", PLUGINMSG, Arg);
 		}
 	}
 	else if (!_stricmp("safemode", Arg)) {

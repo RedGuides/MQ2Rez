@@ -468,11 +468,11 @@ struct PluginCheckbox {
 };
 
 static PluginCheckbox checkboxes[] = {
-	{ "Accept", "Accept rezzes", &AutoRezAccept, "Accept rezzes or not. \n\nINI Setting: Accept"},
-	{ "SafeMode", "Only accept Rez from Guild/Fellow/Group/Raid", &SafeMode, "Accept rezzes only from  Guild, Fellowship, Group, and Raid members. \n\nINI Setting: SafeMode"},
-	{ "VoiceNotify", "Voice tell self on death", &VoiceNotify, "Turns On/Off voice macro \"Help\" sound output when you die. This is local to you only. \n\nINI Setting: VoiceNotify"},
-	{ "ReleaseToBind", "Release on death", &ReleaseToBind, "Automatically release to your bindpoint upon death. \n\nINI Setting: ReleaseToBind" },
-	{ "SilentMode", "Plugin text output", &bQuiet, "Text output when receiving a rez. \n\nINI Setting: SilentMode" },
+	{ "Accept", "Accept rezzes", &AutoRezAccept, "Accept rezzes or not.\n\nINI Setting: Accept"},
+	{ "SafeMode", "Only accept Rez from Guild/Fellow/Group/Raid", &SafeMode, "Accept rezzes only from  Guild, Fellowship, Group, and Raid members.\n\nINI Setting: SafeMode"},
+	{ "VoiceNotify", "Voice tell self on death", &VoiceNotify, "Turns On/Off voice macro \"Help\" sound output when you die. This is local to you only.\n\nINI Setting: VoiceNotify"},
+	{ "ReleaseToBind", "Release on death", &ReleaseToBind, "Automatically release to your bindpoint upon death.\n\nINI Setting: ReleaseToBind" },
+	{ "SilentMode", "Plugin text output", &bQuiet, "Text output when receiving a rez.\n\nINI Setting: SilentMode" },
 };
 
 void RezImGuiSettingsPanel()
@@ -490,15 +490,12 @@ void RezImGuiSettingsPanel()
 
 	ImGui::SetNextItemWidth(-125);
 	if (ImGui::InputInt("Rez Percent", &AutoRezPct)) {
-		if (AutoRezPct < 0)
-			AutoRezPct = 0;
-		if (AutoRezPct > 100)
-			AutoRezPct = 100;
+		AutoRezPct = std::clamp(AutoRezPct, 0, 100);
 
 		WritePrivateProfileInt("MQ2Rez", "RezPct", AutoRezPct, INIFileName);
 	}
 	ImGui::SameLine();
-	mq::imgui::HelpMarker("This is the lowest percent rez you are willing to accept. \n\nINISetting: RezPct");
+	mq::imgui::HelpMarker("This is the lowest percent rez you are willing to accept.\n\nINISetting: RezPct");
 
 	ImGui::SetNextItemWidth(-125);
 	if (ImGui::InputInt("Rez Delay", &iDelay)) {
@@ -508,7 +505,7 @@ void RezImGuiSettingsPanel()
 		WritePrivateProfileInt("MQ2Rez", "Delay", iDelay, INIFileName);
 	}
 	ImGui::SameLine();
-	mq::imgui::HelpMarker("This is how long you would like to delay before accepting your rez in deciseconds. The default is 5100, which is 5.1 seconds. \n\nINISetting: Delay");
+	mq::imgui::HelpMarker("This is how long you would like to delay before accepting your rez in deciseconds. The default is 5100, which is 5.1 seconds.\n\nINISetting: Delay");
 
 	ImGui::SetNextItemWidth(-125);
 	if (ImGui::InputTextWithHint("Command Line", "/ command to execute after rez", RezCommand, IM_ARRAYSIZE(RezCommand)))
@@ -516,7 +513,7 @@ void RezImGuiSettingsPanel()
 		WritePrivateProfileString("MQ2Rez", "Command Line", RezCommand, INIFileName);
 	}
 	ImGui::SameLine();
-	mq::imgui::HelpMarker("This is the slash command you would like to execute after accepting your rez. Example: /echo Accepted a rez! \n\nINISetting: Command Line");
+	mq::imgui::HelpMarker("This is the slash command you would like to execute after accepting your rez. Example: /echo Accepted a rez!\n\nINISetting: Command Line");
 }
 
 PLUGIN_API void InitializePlugin()

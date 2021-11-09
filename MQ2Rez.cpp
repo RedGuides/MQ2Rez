@@ -18,7 +18,7 @@
 #include <mq/imgui/ImGuiUtils.h>
 
 PreSetup("MQ2Rez");
-PLUGIN_VERSION(3.9);
+PLUGIN_VERSION(3.10);
 
 constexpr auto PLUGINMSG = "\aw[\agMQ2Rez\aw]\ao:: ";
 

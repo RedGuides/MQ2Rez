@@ -15,6 +15,7 @@
 // v3.9 - Jimbob & Sic - 04/01/2021 - Restore /rez delay functionality
 #include <mq/Plugin.h>
 #include <chrono>
+#include <mq/imgui/ImGuiUtils.h>
 
 PreSetup("MQ2Rez");
 PLUGIN_VERSION(3.9);
@@ -459,11 +460,71 @@ void SpawnAtCorpse()
 	LeftClickWnd("RespawnWnd", "RW_SelectButton");
 }
 
+struct PluginCheckbox {
+	const char* name;
+	const char* visiblename;
+	bool* value;
+	char* helptext;
+};
+
+static PluginCheckbox checkboxes[] = {
+	{ "Accept", "Accept rezzes", &AutoRezAccept, "Accept rezzes or not. \n\nINI Setting: Accept"},
+	{ "SafeMode", "Only accept Rez from Guild/Fellow/Group/Raid", &SafeMode, "Accept rezzes only from  Guild, Fellowship, Group, and Raid members. \n\nINI Setting: SafeMode"},
+	{ "VoiceNotify", "Voice tell self on death", &VoiceNotify, "Turns On/Off voice macro \"Help\" sound output when you die. This is local to you only. \n\nINI Setting: VoiceNotify"},
+	{ "ReleaseToBind", "Release on death", &ReleaseToBind, "Automatically release to your bindpoint upon death. \n\nINI Setting: ReleaseToBind" },
+	{ "SilentMode", "Plugin text output", &bQuiet, "Text output when receiving a rez. \n\nINI Setting: SilentMode" },
+};
+
+void RezImGuiSettingsPanel()
+{
+	for (PluginCheckbox& cb : checkboxes)
+	{
+		// the visible name is not necessarily the name of the INI setting
+		if (ImGui::Checkbox(cb.visiblename, cb.value))
+		{
+			WritePrivateProfileBool("MQ2Rez", cb.name, *cb.value, INIFileName);
+		}
+		ImGui::SameLine();
+		mq::imgui::HelpMarker(cb.helptext);
+	}
+
+	ImGui::SetNextItemWidth(-125);
+	if (ImGui::InputInt("Rez Percent", &AutoRezPct)) {
+		if (AutoRezPct < 0)
+			AutoRezPct = 0;
+		if (AutoRezPct > 100)
+			AutoRezPct = 100;
+
+		WritePrivateProfileInt("MQ2Rez", "RezPct", AutoRezPct, INIFileName);
+	}
+	ImGui::SameLine();
+	mq::imgui::HelpMarker("This is the lowest percent rez you are willing to accept. \n\nINISetting: RezPct");
+
+	ImGui::SetNextItemWidth(-125);
+	if (ImGui::InputInt("Rez Delay", &iDelay)) {
+		if (iDelay < 0)
+			iDelay = 0;
+
+		WritePrivateProfileInt("MQ2Rez", "Delay", iDelay, INIFileName);
+	}
+	ImGui::SameLine();
+	mq::imgui::HelpMarker("This is how long you would like to delay before accepting your rez in deciseconds. The default is 5100, which is 5.1 seconds. \n\nINISetting: Delay");
+
+	ImGui::SetNextItemWidth(-125);
+	if (ImGui::InputTextWithHint("Command Line", "/ command to execute after rez", RezCommand, IM_ARRAYSIZE(RezCommand)))
+	{
+		WritePrivateProfileString("MQ2Rez", "Command Line", RezCommand, INIFileName);
+	}
+	ImGui::SameLine();
+	mq::imgui::HelpMarker("This is the slash command you would like to execute after accepting your rez. Example: /echo Accepted a rez! \n\nINISetting: Command Line");
+}
+
 PLUGIN_API void InitializePlugin()
 {
 	AddCommand("/rez", TheRezCommand);
 	pRezType = new MQ2RezType;
 	AddMQ2Data("Rez", dataRez);
+	AddSettingsPanel("plugins/Rez", RezImGuiSettingsPanel);
 }
 
 PLUGIN_API void ShutdownPlugin()
@@ -471,6 +532,7 @@ PLUGIN_API void ShutdownPlugin()
 	RemoveCommand("/rez");
 	RemoveMQ2Data("Rez");
 	delete pRezType;
+	RemoveSettingsPanel("plugins/Rez");
 }
 
 PLUGIN_API void SetGameState(int GameState)

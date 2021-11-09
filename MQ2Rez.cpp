@@ -468,9 +468,9 @@ struct PluginCheckbox {
 };
 
 static PluginCheckbox checkboxes[] = {
-	{ "Accept", "Accept rezzes", &AutoRezAccept, "Accept rezzes or not.\n\nINI Setting: Accept"},
-	{ "SafeMode", "Only accept Rez from Guild/Fellow/Group/Raid", &SafeMode, "Accept rezzes only from  Guild, Fellowship, Group, and Raid members.\n\nINI Setting: SafeMode"},
-	{ "VoiceNotify", "Voice tell self on death", &VoiceNotify, "Turns On/Off voice macro \"Help\" sound output when you die. This is local to you only.\n\nINI Setting: VoiceNotify"},
+	{ "Accept", "Accept rezzes", &AutoRezAccept, "Accept rezzes or not.\n\nINI Setting: Accept" },
+	{ "SafeMode", "Only accept Rez from Guild/Fellow/Group/Raid", &SafeMode, "Accept rezzes only from  Guild, Fellowship, Group, and Raid members.\n\nINI Setting: SafeMode" },
+	{ "VoiceNotify", "Voice tell self on death", &VoiceNotify, "Turns On/Off voice macro \"Help\" sound output when you die. This is local to you only.\n\nINI Setting: VoiceNotify" },
 	{ "ReleaseToBind", "Release on death", &ReleaseToBind, "Automatically release to your bindpoint upon death.\n\nINI Setting: ReleaseToBind" },
 	{ "SilentMode", "Plugin text output", &bQuiet, "Text output when receiving a rez.\n\nINI Setting: SilentMode" },
 };
@@ -505,7 +505,7 @@ void RezImGuiSettingsPanel()
 		WritePrivateProfileInt("MQ2Rez", "Delay", iDelay, INIFileName);
 	}
 	ImGui::SameLine();
-	mq::imgui::HelpMarker("This is how long you would like to delay before accepting your rez in deciseconds. The default is 5100, which is 5.1 seconds.\n\nINISetting: Delay");
+	mq::imgui::HelpMarker("This is how long you would like to delay before accepting your rez in milliseconds. The default is 5100, which is 5.1 seconds.\n\nINISetting: Delay");
 
 	ImGui::SetNextItemWidth(-125);
 	if (ImGui::InputTextWithHint("Command Line", "/ command to execute after rez", RezCommand, IM_ARRAYSIZE(RezCommand)))

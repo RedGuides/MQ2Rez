@@ -68,7 +68,11 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "MacroQuest"
+#ifdef _DEBUG
+            VALUE "FileDescription", "MQ2Rez Debug Version"
+#else
             VALUE "FileDescription", "MQ2Rez Release Version"
+#endif
             VALUE "FileVersion", "3.10"
             VALUE "InternalName", "MQ2Rez.dll"
             VALUE "OriginalFilename", "MQ2Rez.dll"

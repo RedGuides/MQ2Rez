@@ -51,8 +51,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 3,10,0,0
- PRODUCTVERSION 3,10,0,0
+ FILEVERSION 3,10
+ PRODUCTVERSION 3,10
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -69,11 +69,11 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "MacroQuest"
             VALUE "FileDescription", "MQ2Rez Release Version"
-            VALUE "FileVersion", "3.10.0.0"
+            VALUE "FileVersion", "3.10"
             VALUE "InternalName", "MQ2Rez.dll"
             VALUE "OriginalFilename", "MQ2Rez.dll"
             VALUE "ProductName", "MQ2Rez"
-            VALUE "ProductVersion", "3.10.0.0"
+            VALUE "ProductVersion", "3.10"
         END
     END
     BLOCK "VarFileInfo"

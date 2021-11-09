@@ -464,10 +464,10 @@ struct PluginCheckbox {
 	const char* name;
 	const char* visiblename;
 	bool* value;
-	char* helptext;
+	const char* helptext;
 };
 
-static PluginCheckbox checkboxes[] = {
+static const PluginCheckbox checkboxes[] = {
 	{ "Accept", "Accept rezzes", &AutoRezAccept, "Accept rezzes or not.\n\nINI Setting: Accept" },
 	{ "SafeMode", "Only accept Rez from Guild/Fellow/Group/Raid", &SafeMode, "Accept rezzes only from  Guild, Fellowship, Group, and Raid members.\n\nINI Setting: SafeMode" },
 	{ "VoiceNotify", "Voice tell self on death", &VoiceNotify, "Turns On/Off voice macro \"Help\" sound output when you die. This is local to you only.\n\nINI Setting: VoiceNotify" },
@@ -477,7 +477,7 @@ static PluginCheckbox checkboxes[] = {
 
 void RezImGuiSettingsPanel()
 {
-	for (PluginCheckbox& cb : checkboxes)
+	for (const PluginCheckbox& cb : checkboxes)
 	{
 		// the visible name is not necessarily the name of the INI setting
 		if (ImGui::Checkbox(cb.visiblename, cb.value))

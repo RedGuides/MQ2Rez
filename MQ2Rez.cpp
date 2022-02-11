@@ -234,26 +234,27 @@ void DisplayHelp()
 	WriteChatf("%s\awUsage:", PLUGINMSG);
 	WriteChatf("%s\aw/rez \ay [help] -> displays this help message", PLUGINMSG);
 	WriteChatf("%s\aw/rez \ayaccept on|off -> Toggle auto-accepting rezbox", PLUGINMSG);
-	WriteChatf("%s\aw/rez \aypct # -> Autoaccepts rezes only if they are higher than # percent", PLUGINMSG);
-	WriteChatf("%s\aw/rez \aysafemode on|off ->Turn on/off safe mode.", PLUGINMSG);
-	WriteChatf("%s\aw/rez \ayrelease -> Release to bind On/Off", PLUGINMSG);
-	WriteChatf("%s\aw/rez \ayvoice on/off -> Turns on voice macro \"Help\". This is local to you only.", PLUGINMSG);
-	WriteChatf("%s\aw/rez \aysilent -> turn On/Off text output when recieving a rez.", PLUGINMSG);
-	WriteChatf("%s\aw/rez \aysetcommand mycommand -> Set the command that you want to run after you are rezzed.", PLUGINMSG);
 	WriteChatf("%s\aw/rez \aydelay # -> Accepts rez after # milliseconds.", PLUGINMSG);
+	WriteChatf("%s\aw/res \ayui -> displays the rez settings panel.", PLUGINMSG);
+	WriteChatf("%s\aw/rez \aypct # -> Autoaccepts rezes only if they are higher than # percent", PLUGINMSG);
+	WriteChatf("%s\aw/rez \ayrelease -> Release to bind On/Off", PLUGINMSG);
+	WriteChatf("%s\aw/rez \aysafemode on|off ->Turn on/off safe mode.", PLUGINMSG);
+	WriteChatf("%s\aw/rez \aysetcommand mycommand -> Set the command that you want to run after you are rezzed.", PLUGINMSG);
 	WriteChatf("%s\aw/rez \aysettings -> Show the current settings.", PLUGINMSG);
+	WriteChatf("%s\aw/rez \aysilent -> turn On/Off text output when recieving a rez.", PLUGINMSG);
+	WriteChatf("%s\aw/rez \ayvoice on/off -> Turns on voice macro \"Help\". This is local to you only.", PLUGINMSG);
 }
 
 void ShowSettings()
 {
 	WriteChatf("%s\ayAccept \ar(%s\ar)", PLUGINMSG, AutoRezAccept ? "\agOn" : "\arOff");
 	WriteChatf("%s\ayAcceptPct \ar(\ag%i\ar)", PLUGINMSG, AutoRezPct);
-	WriteChatf("%s\aySafeMode \ar(%s\ar)", PLUGINMSG, SafeMode ? "\agOn" : "\arOff");
-	WriteChatf("%s\ayRelease to Bind \ar(%s\ar)", PLUGINMSG, ReleaseToBind ? "\agOn" : "\arOff");
-	WriteChatf("%s\ayVoice \ar(%s\ar)", PLUGINMSG, VoiceNotify ? "\agOn" : "\arOff");
-	WriteChatf("%s\aySilent \ar(%s\ar)", PLUGINMSG, bQuiet ? "\agOn" : "\arOff");
-	WriteChatf("%s\ayDelay \ar(\ag%i\ar) milliseconds", PLUGINMSG, iDelay);
 	WriteChatf("%s\ayCommand to run after rez: \ag%s\ax", PLUGINMSG, bDoCommand ? RezCommand : "\arDISABLED");
+	WriteChatf("%s\ayDelay \ar(\ag%i\ar) milliseconds", PLUGINMSG, iDelay);
+	WriteChatf("%s\ayRelease to Bind \ar(%s\ar)", PLUGINMSG, ReleaseToBind ? "\agOn" : "\arOff");
+	WriteChatf("%s\aySafeMode \ar(%s\ar)", PLUGINMSG, SafeMode ? "\agOn" : "\arOff");
+	WriteChatf("%s\aySilent \ar(%s\ar)", PLUGINMSG, bQuiet ? "\agOn" : "\arOff");
+	WriteChatf("%s\ayVoice \ar(%s\ar)", PLUGINMSG, VoiceNotify ? "\agOn" : "\arOff");
 }
 
 void DoINIThings(const eINIOptions Operation)
@@ -379,6 +380,9 @@ void TheRezCommand(PSPAWNINFO pCHAR, char* szLine)
 		GetArg(Arg, szLine, 2);
 		bQuiet = GetBoolFromString(Arg, ReleaseToBind);
 		WriteChatf("%s\aySilent\ar (%s\ar)", PLUGINMSG, (bQuiet ? "\agOn" : "\arOff"));
+	}
+	else if (!_stricmp("ui", Arg) || !_stricmp("gui", Arg)) {
+		EzCommand("/mqsettings plugins/rez");
 	}
 	else
 	{

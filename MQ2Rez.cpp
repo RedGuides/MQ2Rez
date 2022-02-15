@@ -13,6 +13,7 @@
 // v3.6 - ChatWithThisName - 10/24/2019 - Add /rez silent on|off to allow the users to remove text output when recieving a rez. Updated help and showsettings
 // v3.7 - ChatWithThisName - 11/23/2019 - Add Rez datatype.
 // v3.9 - Jimbob & Sic - 04/01/2021 - Restore /rez delay functionality
+// v3.10 - MacQ - 12/26/2021 - Combined into a single INI organized in into sections by [server.character]
 #include <mq/Plugin.h>
 #include <chrono>
 #include <mq/imgui/ImGuiUtils.h>
@@ -36,6 +37,7 @@ bool bQuiet = false;
 int iDelay = 5100;
 
 char RezCommand[MAX_STRING] = { 0 };
+char INISection[MAX_STRING] = { 0 };
 
 int AutoRezPct = 96;
 
@@ -261,19 +263,19 @@ void DoINIThings(const eINIOptions Operation)
 {
 	if (Operation == eINIOptions::ReadOnly || Operation == eINIOptions::ReadAndWrite)
 	{
-		AutoRezAccept = GetPrivateProfileBool("MQ2Rez", "Accept", AutoRezAccept, INIFileName);
-		AutoRezPct = GetPrivateProfileInt("MQ2Rez", "RezPct", AutoRezPct, INIFileName);
+		AutoRezAccept = GetPrivateProfileBool(INISection, "Accept", AutoRezAccept, INIFileName);
+		AutoRezPct = GetPrivateProfileInt(INISection, "RezPct", AutoRezPct, INIFileName);
 		if (AutoRezPct < 0 || AutoRezPct > 100)
 		{
 			AutoRezPct = 96;
 		}
-		SafeMode = GetPrivateProfileBool("MQ2Rez", "SafeMode", SafeMode, INIFileName);
-		VoiceNotify = GetPrivateProfileBool("MQ2Rez", "VoiceNotify", VoiceNotify, INIFileName);
-		ReleaseToBind = GetPrivateProfileBool("MQ2Rez", "ReleaseToBind", ReleaseToBind, INIFileName);
-		bQuiet = GetPrivateProfileBool("MQ2Rez", "SilentMode", bQuiet, INIFileName);
-		iDelay = GetPrivateProfileInt("MQ2Rez", "Delay", iDelay, INIFileName);
+		SafeMode = GetPrivateProfileBool(INISection, "SafeMode", SafeMode, INIFileName);
+		VoiceNotify = GetPrivateProfileBool(INISection, "VoiceNotify", VoiceNotify, INIFileName);
+		ReleaseToBind = GetPrivateProfileBool(INISection, "ReleaseToBind", ReleaseToBind, INIFileName);
+		bQuiet = GetPrivateProfileBool(INISection, "SilentMode", bQuiet, INIFileName);
+		iDelay = GetPrivateProfileInt(INISection, "Delay", iDelay, INIFileName);
 
-		GetPrivateProfileString("MQ2Rez", "Command Line", RezCommand, RezCommand, MAX_STRING, INIFileName);
+		GetPrivateProfileString(INISection, "Command Line", RezCommand, RezCommand, MAX_STRING, INIFileName);
 		if (RezCommand[0] == '\0' || !_stricmp(RezCommand, "DISABLED"))
 		{
 			bDoCommand = false;
@@ -286,14 +288,14 @@ void DoINIThings(const eINIOptions Operation)
 
 	if (Operation == eINIOptions::WriteOnly || Operation == eINIOptions::ReadAndWrite)
 	{
-		WritePrivateProfileBool("MQ2Rez", "Accept", AutoRezAccept, INIFileName);
-		WritePrivateProfileInt("MQ2Rez", "RezPct", AutoRezPct, INIFileName);
-		WritePrivateProfileBool("MQ2Rez", "SafeMode", SafeMode, INIFileName);
-		WritePrivateProfileBool("MQ2Rez", "VoiceNotify", VoiceNotify, INIFileName);
-		WritePrivateProfileBool("MQ2Rez", "ReleaseToBind", ReleaseToBind, INIFileName);
-		WritePrivateProfileBool("MQ2Rez", "SilentMode", bQuiet, INIFileName);
-		WritePrivateProfileInt("MQ2Rez", "Delay", iDelay, INIFileName);
-		WritePrivateProfileString("MQ2Rez", "Command Line", RezCommand, INIFileName);
+		WritePrivateProfileBool(INISection, "Accept", AutoRezAccept, INIFileName);
+		WritePrivateProfileInt(INISection, "RezPct", AutoRezPct, INIFileName);
+		WritePrivateProfileBool(INISection, "SafeMode", SafeMode, INIFileName);
+		WritePrivateProfileBool(INISection, "VoiceNotify", VoiceNotify, INIFileName);
+		WritePrivateProfileBool(INISection, "ReleaseToBind", ReleaseToBind, INIFileName);
+		WritePrivateProfileBool(INISection, "SilentMode", bQuiet, INIFileName);
+		WritePrivateProfileInt(INISection, "Delay", iDelay, INIFileName);
+		WritePrivateProfileString(INISection, "Command Line", RezCommand, INIFileName);
 	}
 
 }
@@ -400,7 +402,7 @@ void TheRezCommand(PSPAWNINFO pCHAR, char* szLine)
 
 bool CanRespawn()
 {
-	if (CSidlScreenWnd *pWnd = (CSidlScreenWnd *)pRespawnWnd) {
+	if (CSidlScreenWnd* pWnd = (CSidlScreenWnd*)pRespawnWnd) {
 		if (pWnd->IsVisible()) {
 			if (CListWnd* clist = (CListWnd*)pWnd->GetChildItem("OptionsList")) {
 				if (CButtonWnd* cButton = (CButtonWnd*)pWnd->GetChildItem("SelectButton")) {
@@ -486,7 +488,7 @@ void RezImGuiSettingsPanel()
 		// the visible name is not necessarily the name of the INI setting
 		if (ImGui::Checkbox(cb.visiblename, cb.value))
 		{
-			WritePrivateProfileBool("MQ2Rez", cb.name, *cb.value, INIFileName);
+			WritePrivateProfileBool(INISection, cb.name, *cb.value, INIFileName);
 		}
 		ImGui::SameLine();
 		mq::imgui::HelpMarker(cb.helptext);
@@ -496,7 +498,7 @@ void RezImGuiSettingsPanel()
 	if (ImGui::InputInt("Rez Percent", &AutoRezPct)) {
 		AutoRezPct = std::clamp(AutoRezPct, 0, 100);
 
-		WritePrivateProfileInt("MQ2Rez", "RezPct", AutoRezPct, INIFileName);
+		WritePrivateProfileInt(INISection, "RezPct", AutoRezPct, INIFileName);
 	}
 	ImGui::SameLine();
 	mq::imgui::HelpMarker("This is the lowest percent rez you are willing to accept.\n\nINISetting: RezPct");
@@ -506,7 +508,7 @@ void RezImGuiSettingsPanel()
 		if (iDelay < 0)
 			iDelay = 0;
 
-		WritePrivateProfileInt("MQ2Rez", "Delay", iDelay, INIFileName);
+		WritePrivateProfileInt(INISection, "Delay", iDelay, INIFileName);
 	}
 	ImGui::SameLine();
 	mq::imgui::HelpMarker("This is how long you would like to delay before accepting your rez in milliseconds. The default is 5100, which is 5.1 seconds.\n\nINISetting: Delay");
@@ -514,7 +516,7 @@ void RezImGuiSettingsPanel()
 	ImGui::SetNextItemWidth(-125);
 	if (ImGui::InputTextWithHint("Command Line", "/ command to execute after rez", RezCommand, IM_ARRAYSIZE(RezCommand)))
 	{
-		WritePrivateProfileString("MQ2Rez", "Command Line", RezCommand, INIFileName);
+		WritePrivateProfileString(INISection, "Command Line", RezCommand, INIFileName);
 	}
 	ImGui::SameLine();
 	mq::imgui::HelpMarker("This is the slash command you would like to execute after accepting your rez. Example: /echo Accepted a rez!\n\nINISetting: Command Line");
@@ -553,7 +555,8 @@ PLUGIN_API void OnPulse()
 	if (!Initialized)
 	{
 		//Update the INI name.
-		sprintf_s(INIFileName, "%s\\%s_%s.ini", gPathConfig, EQADDR_SERVERNAME, pCharData->Name);
+		sprintf_s(INIFileName, "%s\\MQ2Rez.ini", gPathConfig);
+		sprintf_s(INISection, "%s.%s", EQADDR_SERVERNAME, pCharData->Name);
 		WriteChatf("%s\aoInitialized. Version \ag%.2f", PLUGINMSG, MQ2Version);
 		WriteChatf("%s\awType \ay/rez help\aw for list of commands.", PLUGINMSG);
 		DoINIThings(eINIOptions::ReadAndWrite);

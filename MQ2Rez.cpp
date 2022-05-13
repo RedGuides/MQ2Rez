@@ -547,13 +547,13 @@ PLUGIN_API void OnPulse()
 {
 	static int Pulse = 0;
 
-	if (GetGameState() != GAMESTATE_INGAME || !pCharData)
+	if (GetGameState() != GAMESTATE_INGAME || !pLocalPC)
 		return;
 
 	if (!Initialized)
 	{
 		//Update the INI name.
-		sprintf_s(INIFileName, "%s\\%s_%s.ini", gPathConfig, EQADDR_SERVERNAME, pCharData->Name);
+		sprintf_s(INIFileName, "%s\\%s_%s.ini", gPathConfig, GetServerShortName(), pLocalPC->Name);
 		WriteChatf("%s\aoInitialized. Version \ag%.2f", PLUGINMSG, MQ2Version);
 		WriteChatf("%s\awType \ay/rez help\aw for list of commands.", PLUGINMSG);
 		DoINIThings(eINIOptions::ReadAndWrite);

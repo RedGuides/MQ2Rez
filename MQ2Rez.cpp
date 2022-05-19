@@ -553,7 +553,7 @@ PLUGIN_API void OnPulse()
 	if (!Initialized)
 	{
 		//Update the INI name.
-		sprintf_s(INIFileName, "%s\\%s_%s.ini", gPathConfig, EQADDR_SERVERNAME, pCharData->Name);
+		sprintf_s(INIFileName, "%s\\%s_%s.ini", gPathConfig, GetServerShortName(), pCharData->Name);
 		WriteChatf("%s\aoInitialized. Version \ag%.2f", PLUGINMSG, MQ2Version);
 		WriteChatf("%s\awType \ay/rez help\aw for list of commands.", PLUGINMSG);
 		DoINIThings(eINIOptions::ReadAndWrite);

@@ -235,7 +235,7 @@ void DisplayHelp()
 	WriteChatf("%s\aw/rez \ay [help] -> displays this help message", PLUGINMSG);
 	WriteChatf("%s\aw/rez \ayaccept on|off -> Toggle auto-accepting rezbox", PLUGINMSG);
 	WriteChatf("%s\aw/rez \aydelay # -> Accepts rez after # milliseconds.", PLUGINMSG);
-	WriteChatf("%s\aw/res \ayui -> displays the rez settings panel.", PLUGINMSG);
+	WriteChatf("%s\aw/rez \ayui -> displays the rez settings panel.", PLUGINMSG);
 	WriteChatf("%s\aw/rez \aypct # -> Autoaccepts rezes only if they are higher than # percent", PLUGINMSG);
 	WriteChatf("%s\aw/rez \ayrelease -> Release to bind On/Off", PLUGINMSG);
 	WriteChatf("%s\aw/rez \aysafemode on|off ->Turn on/off safe mode.", PLUGINMSG);
